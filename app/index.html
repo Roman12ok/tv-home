@@ -106,9 +106,9 @@ var APPS = [
   { id: NETFLIX, name: 'Netflix', glow: ['#7a0a10', '#1a0204'],
     face: 'background:#000', mark: '<span class="wordmark" style="color:#e50914;font-size:2vw;letter-spacing:.04em">NETFLIX</span>',
     shelf: [
-      { title: 'Suits', contentId: '70195800', bg: 'linear-gradient(135deg,#1d2b3a,#3b5268 60%,#8aa1b5)' },
-      { title: 'Gilmore Girls', contentId: '70155618', bg: 'linear-gradient(135deg,#5a2d1a,#a8643b 55%,#e8b77a)' },
-      { title: 'Young Sheldon', contentId: '80192612', bg: 'linear-gradient(135deg,#123a2a,#2f7a55 55%,#9fd3a6)' }
+      { title: 'Suits', bg: 'linear-gradient(135deg,#1d2b3a,#3b5268 60%,#8aa1b5)' },
+      { title: 'Gilmore Girls', bg: 'linear-gradient(135deg,#5a2d1a,#a8643b 55%,#e8b77a)' },
+      { title: 'Young Sheldon', bg: 'linear-gradient(135deg,#123a2a,#2f7a55 55%,#9fd3a6)' }
     ] },
   { id: '111299001912', name: 'YouTube', glow: ['#6b0f0f', '#160404'],
     face: 'background:#fff', mark: '<span style="display:inline-block;width:2.6vw;height:1.85vw;border-radius:.55vw;background:#ff0000;position:relative;margin-right:.5vw;vertical-align:middle"><span style="position:absolute;left:1.05vw;top:.55vw;border-left:.75vw solid #fff;border-top:.38vw solid transparent;border-bottom:.38vw solid transparent"></span></span><span class="wordmark" style="color:#0f0f0f;font-size:1.6vw;vertical-align:middle">YouTube</span>',
@@ -199,17 +199,12 @@ function toast(msg) {
   toastTimer = setTimeout(function () { $('toast').className = 'toast'; }, 2200);
 }
 
-function launch(appId, label, contentId) {
-  if (!window.tizen) return toast('Would open ' + label);
-  var fail = function (e) { toast('Could not open ' + label + ': ' + e.message); };
-  if (!contentId) return tizen.application.launch(appId, null, fail);
-  // Same deep-link string tv.py sends; Samsung apps read it from PAYLOAD.
-  var data = [new tizen.ApplicationControlData('PAYLOAD',
-    [JSON.stringify({ values: 'm=watchlist&trackId=0&contentId=' + contentId })])];
-  var control = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', null, null, null, data);
-  tizen.application.launchAppControl(control, appId, null, function () {
-    tizen.application.launch(appId, null, fail);
-  });
+// TizenBrew pages get no `tizen` API, so use the TV's own REST API, which opens
+// apps without a pairing token. It rejects deep-link data, so shows open Netflix.
+function launch(appId, label) {
+  toast('Opening ' + label);
+  fetch('http://127.0.0.1:8001/api/v2/applications/' + appId, { method: 'POST', mode: 'no-cors' })
+    .catch(function () { toast('Could not open ' + label); });
 }
 
 document.addEventListener('keydown', function (e) {
@@ -230,8 +225,7 @@ document.addEventListener('keydown', function (e) {
       if (zone === 'shelf') { zone = 'dock'; paintFocus(); }
       break;
     case 13: // OK
-      if (zone === 'dock') launch(a.id, a.name);
-      else launch(a.id, a.shelf[cardIndex].title, a.shelf[cardIndex].contentId);
+      launch(a.id, a.name);
       break;
     default:
       return;
