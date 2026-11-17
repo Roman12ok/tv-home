@@ -6,29 +6,34 @@ var TV_API = 'http://127.0.0.1:8001/api/v2/applications/';
 var IPTV = 'https://iptv-org.github.io/iptv/';
 var HLS_JS = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
 var ROTATE_MS = 8000;
+var AMBIENT_MS = 45000;
 
 var K = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13, BACK: 10009, ESC: 27, BKSP: 8,
   CH_UP: 427, CH_DOWN: 428, PLAYPAUSE: 10252, PLAY: 415, PAUSE: 19, REW: 412, FF: 417 };
 
+var GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
+
 // App IDs come from this TV's installed-app list. `feed` is the TVmaze web channel name.
 var APPS = [
-  { id: '11101200001', name: 'Netflix', feed: 'Netflix', glow: ['#8a0b12', '#1a0204'],
+  { id: '11101200001', name: 'Netflix', feed: 'Netflix',
     face: 'background:#000', mark: '<span class="wordmark" style="color:#e50914;font-size:2vw;letter-spacing:.04em">NETFLIX</span>' },
-  { id: '111299001912', name: 'YouTube', glow: ['#6b0f0f', '#160404'], sub: 'Videos, music and live streams',
+  { id: '111299001912', name: 'YouTube', sub: 'Videos, music and live streams',
     face: 'background:#fff', mark: '<span style="display:inline-block;width:2.6vw;height:1.85vw;border-radius:.55vw;background:#f00;position:relative;margin-right:.5vw;vertical-align:middle"><span style="position:absolute;left:1.05vw;top:.55vw;border-left:.75vw solid #fff;border-top:.38vw solid transparent;border-bottom:.38vw solid transparent"></span></span><span class="wordmark" style="color:#0f0f0f;font-size:1.6vw;vertical-align:middle">YouTube</span>' },
-  { id: '3201512006785', name: 'Prime Video', feed: 'Prime Video', glow: ['#0a3a55', '#03121c'],
+  { id: '3201512006785', name: 'Prime Video', feed: 'Prime Video',
     face: 'background:linear-gradient(135deg,#0f171e,#1b2a36)', mark: '<span class="wordmark" style="color:#00a8e1;font-size:1.55vw">prime video</span>' },
-  { id: '3201901017640', name: 'Disney+', feed: 'Disney+', glow: ['#0d2a7a', '#040a1f'],
+  { id: '3201901017640', name: 'Disney+', feed: 'Disney+',
     face: 'background:linear-gradient(135deg,#0b1a4f,#1d4bb5)', mark: '<span class="wordmark" style="font-size:1.9vw">Disney<span style="color:#4fd1ff">+</span></span>' },
-  { id: '3201807016597', name: 'Apple TV', feed: 'Apple TV', glow: ['#3a3a40', '#0c0c0e'],
+  { id: '3201807016597', name: 'Apple TV', feed: 'Apple TV',
     face: 'background:linear-gradient(135deg,#1c1c1e,#3a3a3c)', mark: '<span class="wordmark" style="font-size:1.75vw">Apple TV</span>' },
-  { id: 'live', name: 'Live TV', glow: ['#7a1236', '#16040b'], sub: 'Free channels from Italy and around the world',
+  { id: 'live', name: 'Live TV', sub: 'Free channels from Italy and around the world',
     face: 'background:linear-gradient(135deg,#ff2d55,#7a1fa2)', mark: '<span class="live-dot"></span><span class="wordmark" style="font-size:1.7vw">Live TV</span>' },
-  { id: 'classics', name: 'Classics', glow: ['#5a3d1c', '#140d05'], sub: 'Public domain films from the Internet Archive',
+  { id: 'world', name: 'World TV', sub: 'Thousands of free channels by category, from iptv-org',
+    face: 'background:linear-gradient(135deg,#0b4f6c,#12a39a)', mark: GLOBE + '<span class="wordmark" style="font-size:1.6vw">World TV</span>' },
+  { id: 'classics', name: 'Classics', sub: 'Public domain films from the Internet Archive',
     face: 'background:linear-gradient(135deg,#3b2a1a,#a07c4b)', mark: '<span style="font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:1.9vw">Classics</span>' },
-  { id: '111477001006', name: 'RaiNews', glow: ['#003a70', '#000d1a'], sub: 'Live news',
+  { id: '111477001006', name: 'RaiNews', sub: 'Live news',
     face: 'background:linear-gradient(135deg,#00305e,#0a5ca8)', mark: '<span class="wordmark" style="font-size:1.6vw">Rai<span style="font-weight:400">News</span></span>' },
-  { id: 'org.tizen.browser', name: 'Internet', glow: ['#14406b', '#050f1a'], sub: 'Web browser',
+  { id: 'org.tizen.browser', name: 'Internet', sub: 'Web browser',
     face: 'background:linear-gradient(135deg,#1565c0,#42a5f5)', mark: '<span class="wordmark" style="font-size:1.6vw">Internet</span>' }
 ];
 
@@ -38,6 +43,10 @@ var IT_FIRST = ['rai 1', 'rai 2', 'rai 3', 'rete 4', 'canale 5', 'italia 1', 'la
   'real time', 'dmax', 'giallo', 'top crime', 'boing', 'k2', 'rai gulp', 'rai yoyo', 'focus', 'rai storia', 'iris',
   'cine34', 'cartoonito', 'frisbee', 'euronews'];
 var WORLD_NEWS = /^(bbc news|bbc world|cnn|al jazeera|france 24|dw|euronews|sky news|bloomberg|nhk world|abc news|cbs news|nbc news|trt world|cna|wion|arirang|i24|africanews|cgtn|tvp world|nasa)/i;
+// one flagship per brand leads the World TV news row
+var NEWS_FIRST = ['bbc news', 'cnn international', 'al jazeera english', 'france 24 english', 'dw english', 'euronews english',
+  'sky news', 'bloomberg', 'nhk world', 'abc news', 'cbs news', 'nbc news', 'trt world', 'cna', 'wion',
+  'arirang', 'cgtn', 'africanews', 'i24news english', 'tvp world', 'nasa'];
 
 var LIVE_ROWS = [
   { title: 'Italia', path: 'countries/it.m3u', first: IT_FIRST },
@@ -49,6 +58,16 @@ var LIVE_ROWS = [
   { title: 'Germany', path: 'countries/de.m3u' },
   { title: 'Japan', path: 'countries/jp.m3u' }
 ];
+// iptv-org categories (adult and shopping left out)
+var WORLD_ROWS = [['news', 'News'], ['sports', 'Sports'], ['movies', 'Movies'], ['series', 'Series'],
+  ['entertainment', 'Entertainment'], ['documentary', 'Documentary'], ['music', 'Music'], ['kids', 'Kids'],
+  ['animation', 'Animation'], ['comedy', 'Comedy'], ['science', 'Science'], ['travel', 'Travel'],
+  ['cooking', 'Cooking'], ['outdoor', 'Outdoor'], ['culture', 'Culture'], ['education', 'Education'],
+  ['lifestyle', 'Lifestyle'], ['classic', 'Classic'], ['family', 'Family'], ['business', 'Business'],
+  ['auto', 'Auto'], ['weather', 'Weather'], ['relax', 'Relax'], ['legislative', 'Politics'],
+  ['religious', 'Religious'], ['general', 'General']
+].map(function (c) { return { title: c[1], path: 'categories/' + c[0] + '.m3u', limit: 60, prefer: c[0] === 'news' ? NEWS_FIRST : null }; });
+
 var H264 = ' AND mediatype:movies AND format:"h.264"';
 var FILM_ROWS = [
   { title: 'Great Classics', q: 'collection:feature_films AND licenseurl:*publicdomain* AND -title:(sex OR reefer OR madness)' + H264 },
@@ -70,6 +89,10 @@ function pad2(n) { return (n < 10 ? '0' : '') + n; }
 function getJSON(url) { return fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
 function getText(url) { return fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }); }
 function restart(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function shuffle(a) {
+  for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
 
 function cached(key, maxAgeMs, load) {
   try {
@@ -97,9 +120,129 @@ function openApp(app) {
     .catch(function () { toast('Could not open ' + app.name); });
 }
 
+// ---------- background + liquid glass ----------
+// Chrome 56 has no backdrop-filter, so every .glass panel holds its own copy of the
+// background, sized and offset in px to line up with the full-screen one, then blurred.
+var VW, VH, M;
+var glasses = [];
+var bg = { url: null, front: 0, soft: false, credit: '', geo: null };
+
+function initGlass() {
+  VW = window.innerWidth;
+  VH = window.innerHeight;
+  M = Math.round(VW * 0.03); // room for the blur to bleed past the panel edge
+  glasses = [].slice.call(document.querySelectorAll('.glass')).map(function (el) {
+    var r = el.getBoundingClientRect(), layers = el.querySelectorAll('.gl');
+    for (var i = 0; i < layers.length; i++) {
+      var s = layers[i].style;
+      s.left = s.top = -M + 'px';
+      s.width = (r.width + 2 * M) + 'px';
+      s.height = (r.height + 2 * M) + 'px';
+    }
+    return { L: r.left, T: r.top, layers: layers };
+  });
+}
+
+function paint(el, css, g, dx, dy) {
+  el.style.backgroundImage = css;
+  el.style.backgroundSize = g.w + 'px ' + g.h + 'px';
+  el.style.backgroundPosition = (g.x + dx) + 'px ' + (g.y + dy) + 'px';
+}
+
+function setBackground(url, soft, credit) {
+  if (!url || url === bg.url) return;
+  bg.url = url;
+  var img = new Image();
+  img.onload = function () {
+    if (bg.url !== url) return;
+    var s = Math.max(VW / img.naturalWidth, VH / img.naturalHeight);
+    var g = { w: img.naturalWidth * s, h: img.naturalHeight * s };
+    g.x = (VW - g.w) / 2;
+    g.y = (VH - g.h) * 0.35;
+    var css = 'url("' + url.replace(/"/g, '%22') + '")', next = 1 - bg.front, prev = bg.front;
+    paint($('bg' + next), css, g, 0, 0);
+    $('bg' + next).className = 'bg on' + (soft ? ' soft' : '');
+    $('bg' + prev).className = 'bg' + (bg.soft ? ' soft' : '');
+    glasses.forEach(function (gl) {
+      paint(gl.layers[next], css, g, M - gl.L, M - gl.T);
+      gl.layers[next].className = 'gl on';
+      gl.layers[prev].className = 'gl';
+    });
+    bg.front = next;
+    bg.soft = soft;
+    bg.credit = credit;
+    bg.geo = g;
+    $('credit').textContent = credit || '';
+  };
+  img.src = url;
+}
+
+// Frame-style ambient photos: Wikimedia Commons featured landscapes (CC licensed, credited on screen).
+var ambient = [], ambientIdx = 0, ambientOn = true;
+
+function loadAmbient() {
+  return cached('home.art', 24 * 3600e3, function () {
+    var u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=categorymembers' +
+      '&gcmtype=file&gcmlimit=60&gcmtitle=' + encodeURIComponent('Category:Featured pictures of landscapes') +
+      '&prop=imageinfo&iiprop=url|size|extmetadata&iiextmetadatafilter=Artist|LicenseShortName&iiurlwidth=1920';
+    return getJSON(u).then(function (r) {
+      var pages = r.query ? Object.keys(r.query.pages).map(function (k) { return r.query.pages[k]; }) : [];
+      return pages.filter(function (p) {
+        var i = p.imageinfo && p.imageinfo[0];
+        return i && i.thumburl && i.width > i.height * 1.3;
+      }).map(function (p) {
+        var i = p.imageinfo[0], m = i.extmetadata || {};
+        return { url: i.thumburl, credit: 'Photo: ' + clip(stripHtml(m.Artist && m.Artist.value), 40) + ' · ' +
+          stripHtml(m.LicenseShortName && m.LicenseShortName.value) + ' · Wikimedia Commons' };
+      });
+    });
+  }).then(function (list) {
+    ambient = shuffle(list);
+    if (ambientOn) showAmbient();
+  }).catch(function () {});
+}
+
+function showAmbient() {
+  ambientOn = true;
+  if (!ambient.length) return;
+  var a = ambient[ambientIdx % ambient.length];
+  setBackground(a.url, false, a.credit);
+}
+
+// TVmaze widescreen backdrops, looked up once per show
+var backdrops = {};
+function backdrop(it) {
+  if (!backdrops[it.sid]) {
+    backdrops[it.sid] = getJSON('https://api.tvmaze.com/shows/' + it.sid + '/images').then(function (imgs) {
+      var b = imgs.filter(function (i) { return i.type === 'background' && i.resolutions && i.resolutions.original; })
+        .sort(function (a, c) {
+          return Math.abs(a.resolutions.original.width - 1920) - Math.abs(c.resolutions.original.width - 1920);
+        })[0];
+      return b ? b.resolutions.original.url : null;
+    }).catch(function () { return null; });
+  }
+  return backdrops[it.sid];
+}
+
+var bgTimer;
+function backgroundFor(it) {
+  clearTimeout(bgTimer);
+  // wait until focus settles so scrolling past posters doesn't download every backdrop
+  bgTimer = setTimeout(function () {
+    if (!it || it.kind === 'channel') return showAmbient();
+    ambientOn = false;
+    if (it.kind === 'film') return setBackground(it.image, true, 'Internet Archive · public domain');
+    backdrop(it).then(function (url) {
+      if (currentItem() !== it) return;
+      if (url) setBackground(url, false, 'Image: TVmaze');
+      else setBackground(it.art, true, 'Image: TVmaze');
+    });
+  }, 350);
+}
+
 // ---------- data: new shows (TVmaze, CC BY-SA) ----------
 function loadNewShows() {
-  return cached('home.shows', 3 * 3600e3, function () {
+  return cached('home.shows2', 3 * 3600e3, function () {
     var days = [0, 1, 2, 3, 4, 5].map(function (d) { return new Date(Date.now() - d * 864e5).toISOString().slice(0, 10); });
     return Promise.all(days.map(function (d) {
       return getJSON('https://api.tvmaze.com/schedule/web?date=' + d).catch(function () { return []; });
@@ -113,7 +256,7 @@ function loadNewShows() {
         if (seen && seen.airdate >= ep.airdate) return;
         var isNew = s.premiered && Date.now() - Date.parse(s.premiered) < 21 * 864e5;
         feeds[s.webChannel.name][s.id] = {
-          kind: 'show', title: s.name, weight: s.weight || 0, airdate: ep.airdate,
+          kind: 'show', sid: s.id, title: s.name, weight: s.weight || 0, airdate: ep.airdate,
           image: s.image.medium, art: s.image.original,
           kicker: isNew ? 'New series' : 'New episode',
           meta: [isNew ? null : 'S' + ep.season + ' · E' + ep.number, (s.genres || []).slice(0, 3).join(', '),
@@ -138,11 +281,23 @@ function parseM3U(text) {
     if (lines[i].indexOf('#EXTINF') !== 0) continue;
     var url = (lines[i + 1] || '').trim();
     if (!url || url[0] === '#') continue;
-    var logo = (lines[i].match(/tvg-logo="([^"]*)"/) || [])[1];
     var raw = lines[i].slice(lines[i].lastIndexOf(',') + 1).trim();
-    out.push({ kind: 'channel', title: raw.replace(/\s*\[[^\]]*\]/g, '').replace(/\s*\(\d+p\)/g, '').trim(), image: logo, url: url });
+    out.push({
+      kind: 'channel', url: url,
+      image: (lines[i].match(/tvg-logo="([^"]*)"/) || [])[1],
+      title: raw.replace(/\s*\[[^\]]*\]/g, '').replace(/\s*\(\d+p\)/g, '').trim(),
+      res: +((raw.match(/\((\d+)p\)/) || [])[1] || 0),
+      flaky: /\[(not 24\/7|geo-blocked)\]/i.test(raw)
+    });
   }
   return out;
+}
+
+function rankedBy(list, score) {
+  // index tiebreak: Chrome 56's sort isn't stable
+  return list.map(function (c, i) { return { c: c, s: score(c), i: i }; })
+    .sort(function (a, b) { return a.s - b.s || a.i - b.i; })
+    .map(function (x) { return x.c; });
 }
 
 var liveCache = {};
@@ -152,22 +307,33 @@ function loadLiveRow(row) {
     var list = parseM3U(text);
     if (row.only) list = list.filter(function (c) { return row.only.test(c.title); });
     if (row.first) {
-      var rank = function (c) {
-        var t = c.title.toLowerCase().replace(/\s+(hd|sd|fhd)$/, '');
-        for (var r = 0; r < row.first.length; r++) if (t === row.first[r]) return r;
-        return row.first.length;
+      list = rankedBy(list, function (c) {
+        var i = row.first.indexOf(c.title.toLowerCase().replace(/\s+(hd|sd|fhd)$/, ''));
+        return i < 0 ? row.first.length : i;
+      });
+    } else {
+      // dependable, well-known, sharp channels with logos first
+      var brand = function (c) {
+        var t = c.title.toLowerCase(), p = 0;
+        if (row.prefer) for (; p < row.prefer.length && t.indexOf(row.prefer[p]) !== 0; p++);
+        return p;
       };
-      // index tiebreak: Chrome 56's sort isn't stable
-      list = list.map(function (c, i) { return { c: c, r: rank(c), i: i }; })
-        .sort(function (a, b) { return a.r - b.r || a.i - b.i; })
-        .map(function (x) { return x.c; });
+      list = rankedBy(list, function (c) { return (c.flaky ? 1e6 : 0) + brand(c) * 1e4 + (c.image ? 0 : 5e3) - c.res; });
+      if (row.prefer) {
+        // one channel per brand up front, their regional variants after
+        var lead = [], rest = [], seen = {};
+        list.forEach(function (c) {
+          var b = brand(c);
+          if (b < row.prefer.length && !seen[b]) { seen[b] = 1; lead.push(c); } else rest.push(c);
+        });
+        list = lead.concat(rest);
+      }
     }
     var names = {};
     return list.filter(function (c) {
       var key = c.title.toLowerCase().replace(/\s+(hd|sd|fhd)$/, '');
       return !names[key] && (names[key] = 1);
-    }).slice(0, 40)
-      .map(function (c) { c.sub = 'Live · ' + row.title; return c; });
+    }).slice(0, row.limit || 40).map(function (c) { c.sub = 'Live · ' + row.title; return c; });
   });
   return liveCache[row.path];
 }
@@ -259,7 +425,6 @@ var zone = 'dock';
 var appIndex = 0, itemIndex = 0, heroIndex = 0;
 var shows = {};
 var rowItems = [];
-var heroTimer, glowFront = 0, artFront = 0, lastArt = null;
 
 try { appIndex = Math.min(+localStorage.getItem('home.app') || 0, APPS.length - 1); } catch (e) {}
 
@@ -284,6 +449,7 @@ function cardHtml(it) {
 function itemsFor(app) {
   if (app.feed) return Promise.resolve(shows[app.feed] || []);
   if (app.id === 'live') return loadLiveRow(LIVE_ROWS[0]);
+  if (app.id === 'world') return loadLiveRow(WORLD_ROWS[0]);
   if (app.id === 'classics') return loadFilmRow(FILM_ROWS[0]);
   return Promise.resolve([]);
 }
@@ -291,6 +457,7 @@ function itemsFor(app) {
 function rowLabelFor(app) {
   if (app.feed) return 'New on ' + app.name;
   if (app.id === 'live') return 'On now · Italia';
+  if (app.id === 'world') return 'News from around the world';
   if (app.id === 'classics') return 'Great Classics';
   return '';
 }
@@ -312,41 +479,16 @@ function renderRow() {
   }).catch(function () {});
 }
 
-function setGlow(colors) {
-  var next = $('glow' + (1 - glowFront));
-  next.style.background = 'radial-gradient(ellipse at 28% 18%, ' + colors[0] + ' 0%, ' + colors[1] + ' 55%, #07070a 100%)';
-  next.className = 'glow on';
-  $('glow' + glowFront).className = 'glow';
-  glowFront = 1 - glowFront;
-}
-
-function setArt(url) {
-  if (url === lastArt) return;
-  lastArt = url;
-  var cur = $('art' + artFront), next = $('art' + (1 - artFront));
-  if (!url) { cur.className = 'art'; return; }
-  var img = new Image();
-  img.onload = function () {
-    if (lastArt !== url) return;
-    next.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")';
-    next.className = 'art on';
-    cur.className = 'art';
-    artFront = 1 - artFront;
-  };
-  img.src = url;
+function currentItem() {
+  return zone === 'row' ? rowItems[itemIndex] : rowItems[heroIndex % (rowItems.length || 1)];
 }
 
 function showHero() {
-  var app = APPS[appIndex];
-  var it = zone === 'row' ? rowItems[itemIndex] : rowItems[heroIndex % (rowItems.length || 1)];
-  var h = $('hero');
-  setGlow(app.glow);
+  var app = APPS[appIndex], it = currentItem(), h = $('hero');
   if (!it) {
     h.innerHTML = '<div class="kicker">' + esc(app.name) + '</div><div class="hero-title">' + esc(app.name) +
       '</div><div class="hero-summary">' + esc(app.sub || '') + '</div>';
     $('heroArt').innerHTML = '';
-    $('credit').textContent = '';
-    setArt(null);
   } else {
     var kicker = it.kind === 'show' ? app.name + ' · ' + it.kicker : it.kind === 'channel' ? 'Live now' : 'Classic film';
     var meta = it.kind === 'show' ? it.meta : it.sub;
@@ -355,11 +497,10 @@ function showHero() {
     $('heroArt').innerHTML = it.image
       ? '<img class="' + (it.kind === 'channel' ? 'logo' : '') + '" src="' + esc(it.kind === 'show' ? it.art : it.image) + '" alt="" onerror="this.style.display=\'none\'">'
       : '';
-    $('credit').textContent = it.kind === 'show' ? 'Data: TVmaze' : it.kind === 'film' ? 'Internet Archive' : 'iptv-org';
-    setArt(it.kind === 'channel' ? null : it.kind === 'show' ? it.art : it.image);
   }
   restart(h, 'swap');
   restart($('heroArt'), 'swap');
+  backgroundFor(it);
 }
 
 function scrollStrip(el, index, step, visible) {
@@ -373,7 +514,7 @@ function paintFocus() {
   var cards = $('row').children;
   for (var j = 0; j < cards.length; j++) cards[j].classList.toggle('focused', zone === 'row' && j === itemIndex);
   scrollStrip($('dock'), appIndex, 14.3, 90.6);
-  var step = rowItems[0] && rowItems[0].kind === 'show' ? 8.9 : 16.5;
+  var step = rowItems[0] && rowItems[0].kind === 'show' ? 8.7 : 16.5;
   scrollStrip($('row'), zone === 'row' ? itemIndex : 0, step, 90.6);
 }
 
@@ -385,16 +526,17 @@ function selectApp(i) {
   showHero();
 }
 
-function startRotation() {
-  clearInterval(heroTimer);
-  heroTimer = setInterval(function () {
+function startTimers() {
+  setInterval(function () {
     if (screen === 'home' && zone === 'dock' && rowItems.length > 1) { heroIndex++; showHero(); }
   }, ROTATE_MS);
+  setInterval(function () {
+    if (screen === 'home' && ambientOn && ambient.length) { ambientIdx++; showAmbient(); }
+  }, AMBIENT_MS);
 }
 
 function activate(it, list, i) {
-  var app = APPS[appIndex];
-  if (!it || it.kind === 'show') return openApp(app);
+  if (!it || it.kind === 'show') return openApp(APPS[appIndex]);
   play(list, i, 'home');
 }
 
@@ -412,37 +554,55 @@ function homeKey(k) {
     if (zone === 'row') { zone = 'dock'; paintFocus(); showHero(); }
   } else if (k === K.OK) {
     if (zone === 'row') activate(rowItems[itemIndex], rowItems, itemIndex);
-    else if (app.id === 'live') openBrowse('Live TV', 'Free channels from public playlists (iptv-org)', LIVE_ROWS, loadLiveRow);
+    else if (app.id === 'live') openBrowse('Live TV', 'Free channels from Italy and around the world · iptv-org', LIVE_ROWS, loadLiveRow);
+    else if (app.id === 'world') openBrowse('World TV', 'Free public channels by category · iptv-org', WORLD_ROWS, loadLiveRow);
     else if (app.id === 'classics') openBrowse('Classics', 'Public domain films from the Internet Archive', FILM_ROWS, loadFilmRow);
     else openApp(app);
   } else return false;
   return true;
 }
 
-// ---------- browse screen (Live TV / Classics) ----------
-var browse = { rows: [], items: [], row: 0, col: [] };
+// ---------- browse screen (Live TV / World TV / Classics) ----------
+var browse = { rows: [], items: [], row: 0, col: [], loader: null, asked: [] };
 
 function openBrowse(title, sub, rows, loader) {
   screen = 'browse';
-  browse = { rows: rows, items: rows.map(function () { return []; }), row: 0, col: rows.map(function () { return 0; }) };
+  browse = { rows: rows, items: rows.map(function () { return []; }), row: 0,
+    col: rows.map(function () { return 0; }), loader: loader, asked: [] };
+  var front = $('bg' + bg.front);
+  $('browseBg').style.backgroundImage = front.style.backgroundImage;
+  $('browseBg').style.backgroundSize = front.style.backgroundSize;
+  $('browseBg').style.backgroundPosition = front.style.backgroundPosition;
   $('browseTitle').textContent = title;
   $('browseSub').textContent = sub;
   $('browseRows').innerHTML = rows.map(function (r, i) {
     return '<div class="brow"><div class="brow-label">' + esc(r.title) + '</div><div class="strip" id="brow' + i + '"><div class="row-empty">Loading…</div></div></div>';
   }).join('');
   $('browse').className = 'screen on';
-  rows.forEach(function (r, i) {
-    loader(r).then(function (items) {
-      browse.items[i] = items;
-      $('brow' + i).innerHTML = items.length ? items.map(cardHtml).join('') : '<div class="row-empty">Nothing available right now</div>';
-      paintBrowse();
-    }).catch(function () { $('brow' + i).innerHTML = '<div class="row-empty">Could not load this list</div>'; });
-  });
   paintBrowse();
 }
 
+// Only fetch the rows on screen and just below, so 26 categories don't all download at once.
+function loadNearbyRows() {
+  for (var i = Math.max(0, browse.row - 1); i <= Math.min(browse.rows.length - 1, browse.row + 2); i++) {
+    if (browse.asked[i]) continue;
+    browse.asked[i] = true;
+    (function (i, rows) {
+      browse.loader(rows[i]).then(function (items) {
+        if (browse.rows !== rows) return;
+        browse.items[i] = items;
+        $('brow' + i).innerHTML = items.length ? items.map(cardHtml).join('') : '<div class="row-empty">Nothing available right now</div>';
+        paintBrowse();
+      }).catch(function () {
+        if (browse.rows === rows) $('brow' + i).innerHTML = '<div class="row-empty">Could not load this list</div>';
+      });
+    })(i, browse.rows);
+  }
+}
+
 function paintBrowse() {
-  for (var r = 0; r < browse.rows.length; r++) {
+  loadNearbyRows();
+  for (var r = Math.max(0, browse.row - 2); r <= Math.min(browse.rows.length - 1, browse.row + 2); r++) {
     var strip = $('brow' + r), kids = strip.children;
     for (var c = 0; c < kids.length; c++) kids[c].classList.toggle('focused', r === browse.row && c === browse.col[r]);
     scrollStrip(strip, browse.col[r], 16.5, 90.6);
@@ -506,7 +666,7 @@ function setSource(url) {
   setMsg('');
   stallTimer = setTimeout(fail, 20000);
   var isHls = /\.m3u8(\?|$)/i.test(url);
-  // Tizen's video element plays HLS itself; desktop browsers need hls.js.
+  // Tizen's video element plays HLS itself; desktop browsers may need hls.js.
   if (!isHls || video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
     video.play().catch(function () {});
@@ -621,6 +781,13 @@ document.addEventListener('keydown', function (e) {
   if (handled) e.preventDefault();
 });
 
+window.addEventListener('resize', function () {
+  initGlass();
+  var u = bg.url;
+  bg.url = null;
+  setBackground(u, bg.soft, bg.credit);
+});
+
 // ---------- clock ----------
 function tick() {
   var d = new Date(), h = d.getHours();
@@ -630,11 +797,13 @@ function tick() {
 }
 
 // ---------- start ----------
+initGlass();
 renderDock();
 tick();
 setInterval(tick, 10000);
 selectApp(appIndex);
-startRotation();
+startTimers();
+loadAmbient();
 loadNewShows().then(function (s) { shows = s; renderRow(); }).catch(function () {});
 loadWeather();
 loadNews();
