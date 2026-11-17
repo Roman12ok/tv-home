@@ -2,6 +2,61 @@
 // optional chaining, padStart or `catch {}`.
 'use strict';
 
+// The page markup lives here so index.html can stay a stable loader.
+document.body.insertAdjacentHTML('afterbegin', `
+<div id="home">
+  <div class="bg" id="bg0"></div>
+  <div class="bg" id="bg1"></div>
+  <div class="scrim"></div>
+
+  <div class="greeting"><div class="greet" id="greet"></div><div class="date" id="date"></div></div>
+  <div class="glass" id="statusGlass">
+    <div class="gl"></div><div class="gl"></div><div class="tint"></div>
+    <div class="glass-in"><div class="weather" id="weather"></div><div class="divider"></div><div class="clock" id="clock"></div></div>
+  </div>
+
+  <div class="glass" id="heroGlass">
+    <div class="gl"></div><div class="gl"></div><div class="tint"></div>
+    <div class="glass-in" id="hero"></div>
+  </div>
+  <div class="hero-art" id="heroArt"></div>
+  <div class="credit" id="credit"></div>
+
+  <div class="glass" id="shelfGlass">
+    <div class="gl"></div><div class="gl"></div><div class="tint"></div>
+    <div class="glass-in">
+      <div class="row-label" id="rowLabel"></div>
+      <div class="row-wrap"><div class="strip" id="row"></div></div>
+      <div class="dock"><div class="strip" id="dock"></div></div>
+      <div class="ticker" id="ticker">
+        <div class="ticker-label">BBC NEWS</div>
+        <div class="ticker-track"><div class="ticker-text" id="tickerText"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="browse">
+  <div class="browse-bg" id="browseBg"></div>
+  <div class="browse-head"><div class="browse-title" id="browseTitle"></div><div class="browse-sub" id="browseSub"></div></div>
+  <div class="browse-hint">BACK to return</div>
+  <div class="browse-view"><div class="browse-rows" id="browseRows"></div></div>
+</div>
+
+<div class="screen" id="player">
+  <video id="video" autoplay playsinline></video>
+  <div class="spinner" id="spinner"></div>
+  <div class="msg" id="msg"></div>
+  <div class="banner" id="banner"></div>
+  <div class="bar" id="bar">
+    <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+    <div class="bar-time"><span id="barNow"></span><span id="barEnd"></span></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+`);
+
 var TV_API = 'http://127.0.0.1:8001/api/v2/applications/';
 var IPTV = 'https://iptv-org.github.io/iptv/';
 var HLS_JS = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';

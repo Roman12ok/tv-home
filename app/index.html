@@ -4,300 +4,34 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Home</title>
-<style>
-  /* Laid out in vw for a 16:9 1920x1080 page (100vw x 56.25vw). Uses only CSS that
-     Chrome 56 (Tizen 4.0) supports: no grid, flex gap, aspect-ratio or backdrop-filter.
-     Glass panels fake backdrop-filter with their own blurred, pixel-aligned copy of
-     the background (see setBackground in app.js). */
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0b10; }
-  body {
-    color: #fff;
-    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", "SamsungOne", Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  img { display: block; }
-
-  /* ---------- background: art / show backdrop ---------- */
-  .bg {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-repeat: no-repeat; opacity: 0; transition: opacity 1.1s ease;
-  }
-  .bg.on { opacity: 1; }
-  .bg.soft { filter: blur(1.2vw) brightness(.8); transform: scale(1.08); }
-  .scrim {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(to bottom, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 60%, rgba(0,0,0,.3) 100%);
-  }
-  .credit {
-    position: absolute; right: 3.4vw; top: 21.3vw; font-size: .72vw; max-width: 40vw;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    background: rgba(0,0,0,.4); padding: .2vw .6vw; border-radius: .8vw; color: rgba(255,255,255,.85);
-  }
-  .credit:empty { display: none; }
-
-  /* ---------- liquid glass ---------- */
-  .glass {
-    position: absolute; overflow: hidden; border-radius: 1.6vw;
-    border: 1px solid rgba(255,255,255,.22);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -1px 0 rgba(255,255,255,.08), 0 1.6vw 3.2vw rgba(0,0,0,.35);
-  }
-  .gl {
-    position: absolute; background-repeat: no-repeat;
-    filter: blur(1.4vw) saturate(1.6) brightness(.62);
-    opacity: 0; transition: opacity 1.1s ease;
-  }
-  .gl.on { opacity: 1; }
-  .tint {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background:
-      radial-gradient(ellipse at 15% 0%, rgba(255,255,255,.2) 0%, rgba(255,255,255,0) 55%),
-      linear-gradient(135deg, rgba(255,255,255,.1), rgba(255,255,255,.02) 60%, rgba(0,0,0,.12));
-  }
-  /* a slow highlight that glides across the glass now and then */
-  .glass::after {
-    content: ""; position: absolute; top: -40%; left: 0; width: 18%; height: 180%; z-index: 1;
-    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.13), rgba(255,255,255,0));
-    transform: translateX(-120%) rotate(14deg);
-    animation: sheen 11s ease-in-out infinite;
-  }
-  #heroGlass::after { animation-delay: 2s; }
-  #shelfGlass::after { animation-delay: 5s; animation-duration: 14s; }
-  @keyframes sheen {
-    0%, 72% { transform: translateX(-120%) rotate(14deg); }
-    100% { transform: translateX(650%) rotate(14deg); }
-  }
-  .glass-in { position: relative; z-index: 2; height: 100%; text-shadow: 0 .05vw .3vw rgba(0,0,0,.35); }
-
-  /* ---------- top bar ---------- */
-  .greeting { position: absolute; left: 4.7vw; top: 2.1vw; text-shadow: 0 .1vw .6vw rgba(0,0,0,.6); }
-  .greet { font-size: 1.45vw; font-weight: 700; }
-  .date { font-size: .95vw; opacity: .8; margin-top: .2vw; }
-  #statusGlass { top: 1.6vw; right: 3.4vw; width: 25vw; height: 3.7vw; border-radius: 1.85vw; }
-  #statusGlass .glass-in { display: flex; align-items: center; justify-content: flex-end; padding: 0 1.4vw; }
-  .weather { display: flex; align-items: center; opacity: 0; transition: opacity .6s; }
-  .weather.on { opacity: 1; }
-  .weather svg { width: 1.8vw; height: 1.8vw; margin-right: .5vw; }
-  .temp { font-size: 1.35vw; font-weight: 600; }
-  .wx-sub { font-size: .78vw; opacity: .75; margin-left: .6vw; line-height: 1.25; }
-  .divider { width: 1px; height: 1.8vw; background: rgba(255,255,255,.3); margin: 0 1.1vw; }
-  .clock { font-size: 1.35vw; font-weight: 600; letter-spacing: .02em; }
-
-  /* ---------- hero ---------- */
-  #heroGlass { left: 3.4vw; top: 6.2vw; width: 51vw; height: 15vw; }
-  #hero { padding: 1.3vw 1.7vw; }
-  .kicker {
-    display: inline-block; font-size: .8vw; font-weight: 700; letter-spacing: .16em;
-    text-transform: uppercase; padding: .28vw .7vw; border-radius: .9vw;
-    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.2);
-  }
-  .hero-title {
-    font-size: 3vw; font-weight: 800; letter-spacing: -.02em; line-height: 1.08;
-    margin-top: .7vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .hero-meta { font-size: 1vw; opacity: .8; margin-top: .5vw; }
-  .hero-summary {
-    font-size: 1.05vw; line-height: 1.45; opacity: .88; margin-top: .55vw;
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-  }
-  .swap { animation: fadeUp .55s cubic-bezier(.2,.7,.2,1) both; }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(1vw); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .hero-art {
-    position: absolute; right: 6vw; top: 5.6vw; height: 15.6vw; width: 26vw;
-    display: flex; align-items: center; justify-content: flex-end;
-  }
-  .hero-art img {
-    max-height: 15.6vw; max-width: 26vw; border-radius: .9vw;
-    box-shadow: 0 2vw 4vw rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.25);
-    animation: float 7s ease-in-out infinite alternate;
-  }
-  .hero-art img.logo { background: rgba(255,255,255,.92); padding: 1.6vw; max-height: 10vw; max-width: 20vw; }
-  @keyframes float {
-    from { transform: translateY(-.35vw) rotate(-.6deg); }
-    to   { transform: translateY(.35vw) rotate(.6deg); }
-  }
-
-  /* ---------- shelf: rows + dock + ticker on one glass sheet ---------- */
-  #shelfGlass { left: 2.2vw; right: 2.2vw; top: 23.2vw; height: 34vw; }
-  .row-label { position: absolute; left: 2.5vw; top: 1vw; font-size: 1.1vw; font-weight: 600; opacity: .85; }
-  .row-wrap { position: absolute; left: 2.5vw; right: 0; top: 2.8vw; height: 12.6vw; }
-  .dock { position: absolute; left: 2.5vw; right: 0; top: 15.6vw; height: 11vw; }
-  .strip { display: flex; transition: transform .3s cubic-bezier(.2,.7,.2,1); }
-
-  .poster, .card { position: relative; flex: none; border-radius: .7vw; overflow: hidden; background: rgba(20,20,28,.6);
-    box-shadow: 0 .5vw 1.2vw rgba(0,0,0,.4); transition: transform .22s ease, box-shadow .22s ease; }
-  .poster { width: 7.4vw; height: 11.1vw; margin-right: 1.3vw; }
-  .poster img { width: 100%; height: 100%; object-fit: cover; }
-
-  .card-wrap { flex: none; width: 15vw; margin-right: 1.5vw; }
-  .card { width: 100%; height: 8.44vw; display: flex; align-items: center; justify-content: center; }
-  .card img.cover { width: 100%; height: 100%; object-fit: cover; }
-  .card img.logo { max-width: 70%; max-height: 62%; }
-  .card .live { position: absolute; left: .6vw; top: .6vw; font-size: .65vw; font-weight: 800; letter-spacing: .12em;
-    background: #ff2d55; padding: .15vw .45vw; border-radius: .25vw; }
-  .card-title { font-size: .95vw; font-weight: 500; margin-top: .9vw; opacity: .6;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .2s; }
-  .row-empty { font-size: 1.1vw; opacity: .55; padding-top: 3.5vw; }
-
-  .tile { width: 12.6vw; margin-right: 1.7vw; flex: none; animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(2.5vw); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .tile-face {
-    position: relative; width: 100%; height: 7.2vw; border-radius: .9vw; overflow: hidden;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 .5vw 1.2vw rgba(0,0,0,.35);
-    transition: transform .22s ease, box-shadow .22s ease;
-  }
-  .tile-face svg { width: 1.7vw; height: 1.7vw; margin-right: .5vw; }
-  .tile-name { text-align: center; font-size: 1vw; font-weight: 500; margin-top: 1.3vw; opacity: 0; transition: opacity .2s; }
-  .wordmark { font-weight: 800; letter-spacing: -.01em; }
-  .live-dot { display: inline-block; width: .9vw; height: .9vw; border-radius: 50%; background: #fff;
-    margin-right: .6vw; animation: pulse 1.6s ease-in-out infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } }
-
-  /* tvOS-style focus: lift, grow, deeper shadow, sheen and a bright rim */
-  .shine::after {
-    content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(160deg, rgba(255,255,255,.32) 0%, rgba(255,255,255,0) 45%);
-    opacity: 0; transition: opacity .22s ease;
-  }
-  .focused .tile-face, .poster.focused, .focused .card {
-    transform: scale(1.13) translateY(-.3vw);
-    box-shadow: 0 1.8vw 2.8vw rgba(0,0,0,.6), 0 0 0 .18vw rgba(255,255,255,.9);
-  }
-  .focused .tile-face::after, .poster.focused::after, .focused .card::after { opacity: 1; }
-  .tile.focused .tile-name, .card-wrap.focused .card-title { opacity: 1; }
-
-  .ticker {
-    position: absolute; left: 0; right: 0; bottom: 1vw; height: 3vw;
-    border-top: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.16);
-    display: flex; align-items: center; overflow: hidden; opacity: 0; transition: opacity .6s;
-  }
-  .ticker.on { opacity: 1; }
-  .ticker-label {
-    position: relative; z-index: 1; flex: none; margin-left: 2.5vw; margin-right: 1.4vw;
-    font-size: .78vw; font-weight: 800; letter-spacing: .14em; background: #bb1919; padding: .3vw .7vw; border-radius: .3vw;
-  }
-  .ticker-track { position: relative; flex: 1; height: 100%; overflow: hidden; }
-  .ticker-text {
-    position: absolute; top: 0; left: 0; height: 100%; display: flex; align-items: center;
-    white-space: nowrap; font-size: 1.02vw; opacity: .92; animation: marquee linear infinite;
-  }
-  .ticker-text span { margin-right: 3vw; }
-  .ticker-text b { color: #ff8a8a; margin-right: 3vw; }
-  @keyframes marquee { from { transform: translateX(80vw); } to { transform: translateX(-100%); } }
-
-  /* ---------- browse screen ---------- */
-  .screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 5; }
-  .screen.on { display: block; animation: screenIn .45s cubic-bezier(.2,.7,.2,1) both; }
-  @keyframes screenIn { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: scale(1); } }
-  #browse { background: #0b0b11; overflow: hidden; }
-  .browse-bg {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-repeat: no-repeat;
-    filter: blur(2vw) saturate(1.5) brightness(.5); transform: scale(1.08);
-  }
-  .browse-head { position: absolute; left: 4.7vw; top: 2.6vw; }
-  .browse-title { font-size: 2.9vw; font-weight: 800; letter-spacing: -.02em; }
-  .browse-sub { font-size: 1vw; opacity: .7; margin-top: .4vw; }
-  .browse-view { position: absolute; left: 0; right: 0; top: 7.4vw; bottom: 0; overflow: hidden; }
-  .browse-rows { position: absolute; left: 4.7vw; right: 0; top: 1.2vw; transition: transform .35s cubic-bezier(.2,.7,.2,1); }
-  .brow { height: 14.2vw; }
-  .brow-label { font-size: 1.2vw; font-weight: 600; opacity: .85; margin-bottom: 1vw; }
-  .browse-hint { position: absolute; right: 4.7vw; top: 3.6vw; font-size: .9vw; opacity: .55; }
-
-  /* ---------- player ---------- */
-  #player { background: #000; }
-  #video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; }
-  .banner {
-    position: absolute; left: 0; right: 0; top: 0; padding: 2.4vw 4.7vw 5vw;
-    background: linear-gradient(to bottom, rgba(0,0,0,.85), rgba(0,0,0,0));
-    display: flex; align-items: center;
-    transform: translateY(-100%); opacity: 0; transition: transform .4s ease, opacity .4s ease;
-  }
-  .banner.on { transform: translateY(0); opacity: 1; }
-  .banner img { max-height: 4vw; max-width: 9vw; margin-right: 1.6vw; border-radius: .4vw; background: rgba(255,255,255,.9); padding: .4vw; }
-  .banner-title { font-size: 1.9vw; font-weight: 700; }
-  .banner-sub { font-size: 1vw; opacity: .7; margin-top: .3vw; }
-  .bar { position: absolute; left: 4.7vw; right: 4.7vw; bottom: 3vw; opacity: 0; transition: opacity .4s; }
-  .bar.on { opacity: 1; }
-  .bar-track { height: .35vw; border-radius: .2vw; background: rgba(255,255,255,.25); overflow: hidden; }
-  .bar-fill { height: 100%; width: 0; background: #fff; }
-  .bar-time { display: flex; justify-content: space-between; font-size: .95vw; opacity: .8; margin-top: .6vw; }
-  .msg { position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-size: 1.4vw; opacity: 0; transition: opacity .3s; }
-  .msg.on { opacity: .9; }
-  .spinner {
-    position: absolute; left: 50%; top: 50%; width: 3.6vw; height: 3.6vw; margin: -1.8vw 0 0 -1.8vw;
-    border: .3vw solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%;
-    animation: spin .9s linear infinite; display: none;
-  }
-  .spinner.on { display: block; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .toast {
-    position: fixed; left: 50%; bottom: 4.4vw; transform: translateX(-50%) translateY(1vw);
-    background: rgba(40,40,46,.94); padding: .9vw 1.8vw; border-radius: 2vw;
-    font-size: 1.1vw; opacity: 0; transition: opacity .25s ease, transform .25s ease; z-index: 10;
-  }
-  .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
-</style>
+<style>html, body { margin: 0; background: #0b0b10; }</style>
 </head>
 <body>
-<div id="home">
-  <div class="bg" id="bg0"></div>
-  <div class="bg" id="bg1"></div>
-  <div class="scrim"></div>
+<script>
+// TizenBrew serves this page through jsDelivr, whose branch cache can lag for days,
+// so this page stays a fixed loader and the app comes from GitHub Pages (~10 min after a push).
+(function () {
+  var local = location.hostname === 'localhost';
+  var base = local ? '' : 'https://roman12ok.github.io/tv-home/app/';
+  var bust = local ? '' : '?v=' + Math.floor(Date.now() / 6e5);
 
-  <div class="greeting"><div class="greet" id="greet"></div><div class="date" id="date"></div></div>
-  <div class="glass" id="statusGlass">
-    <div class="gl"></div><div class="gl"></div><div class="tint"></div>
-    <div class="glass-in"><div class="weather" id="weather"></div><div class="divider"></div><div class="clock" id="clock"></div></div>
-  </div>
+  function load(tag, attr, url, fallback, done) {
+    var el = document.createElement(tag);
+    if (tag === 'link') el.rel = 'stylesheet';
+    el.onload = done;
+    el.onerror = function () {
+      if (url === fallback) return done();
+      load(tag, attr, fallback, fallback, done);
+    };
+    el[attr] = url;
+    (tag === 'link' ? document.head : document.body).appendChild(el);
+  }
 
-  <div class="glass" id="heroGlass">
-    <div class="gl"></div><div class="gl"></div><div class="tint"></div>
-    <div class="glass-in" id="hero"></div>
-  </div>
-  <div class="hero-art" id="heroArt"></div>
-  <div class="credit" id="credit"></div>
-
-  <div class="glass" id="shelfGlass">
-    <div class="gl"></div><div class="gl"></div><div class="tint"></div>
-    <div class="glass-in">
-      <div class="row-label" id="rowLabel"></div>
-      <div class="row-wrap"><div class="strip" id="row"></div></div>
-      <div class="dock"><div class="strip" id="dock"></div></div>
-      <div class="ticker" id="ticker">
-        <div class="ticker-label">BBC NEWS</div>
-        <div class="ticker-track"><div class="ticker-text" id="tickerText"></div></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="screen" id="browse">
-  <div class="browse-bg" id="browseBg"></div>
-  <div class="browse-head"><div class="browse-title" id="browseTitle"></div><div class="browse-sub" id="browseSub"></div></div>
-  <div class="browse-hint">BACK to return</div>
-  <div class="browse-view"><div class="browse-rows" id="browseRows"></div></div>
-</div>
-
-<div class="screen" id="player">
-  <video id="video" autoplay playsinline></video>
-  <div class="spinner" id="spinner"></div>
-  <div class="msg" id="msg"></div>
-  <div class="banner" id="banner"></div>
-  <div class="bar" id="bar">
-    <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
-    <div class="bar-time"><span id="barNow"></span><span id="barEnd"></span></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-<script src="app.js"></script>
+  // app.js measures the glass panels on start, so it waits for the stylesheet
+  load('link', 'href', base + 'style.css' + bust, 'style.css', function () {
+    load('script', 'src', base + 'app.js' + bust, 'app.js', function () {});
+  });
+})();
+</script>
 </body>
 </html>
