@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home</title>
+<style>
+  /* Sized in vw so it scales to the TV's 1920x1080 page. Avoids CSS newer than
+     Chrome 56 (Tizen 4.0): no flex gap, aspect-ratio or backdrop-filter. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #08080b; }
+  body {
+    color: #fff;
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", "SamsungOne", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .backdrop {
+    position: fixed; top: -10%; left: -10%; width: 120%; height: 120%;
+    filter: blur(5vw); opacity: 0; transition: opacity .6s ease;
+  }
+  .backdrop.on { opacity: 1; }
+  .vignette {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(to bottom, rgba(0,0,0,.15) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,.85) 100%);
+  }
+
+  .clock {
+    position: fixed; top: 2.6vw; right: 4.7vw;
+    font-size: 1.55vw; font-weight: 500; opacity: .85; letter-spacing: .02em;
+  }
+
+  .shelf { position: absolute; left: 4.7vw; right: 4.7vw; top: 7vw; height: 22vw; }
+  .hero-title { font-size: 4.4vw; font-weight: 700; letter-spacing: -.02em; }
+  .hero-sub { font-size: 1.45vw; opacity: .7; margin-top: .6vw; }
+  .shelf-label { font-size: 1.25vw; font-weight: 600; opacity: .75; margin: 2.2vw 0 1vw; }
+  .shelf-row { display: flex; }
+
+  .card {
+    position: relative; width: 19vw; height: 10.7vw; margin-right: 1.8vw;
+    border-radius: .9vw; overflow: hidden;
+    box-shadow: 0 .6vw 1.4vw rgba(0,0,0,.45);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .card-title {
+    position: absolute; left: 1.2vw; bottom: 1vw; right: 1.2vw;
+    font-size: 1.6vw; font-weight: 700; text-shadow: 0 .15vw .5vw rgba(0,0,0,.5);
+  }
+  .card-meta {
+    position: absolute; left: 1.2vw; top: 1vw;
+    font-size: .85vw; font-weight: 700; letter-spacing: .12em; color: rgba(255,255,255,.85);
+  }
+
+  .dock { position: absolute; left: 4.7vw; right: 0; top: 33.5vw; height: 14vw; }
+  .dock-row { display: flex; padding-top: 1.2vw; transition: transform .25s ease; }
+  .tile { width: 12.6vw; margin-right: 1.7vw; flex: none; }
+  .tile-face {
+    position: relative; width: 100%; height: 7.6vw; border-radius: .9vw; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 .5vw 1.2vw rgba(0,0,0,.4);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .tile-name {
+    text-align: center; font-size: 1.05vw; font-weight: 500; margin-top: 1.5vw;
+    opacity: 0; transition: opacity .2s ease;
+  }
+
+  /* tvOS-style focus: lift, enlarge, deepen the shadow and add a soft sheen */
+  .shine::after {
+    content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(160deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 45%);
+    opacity: 0; transition: opacity .2s ease;
+  }
+  .focused .tile-face, .card.focused {
+    transform: scale(1.14) translateY(-.3vw);
+    box-shadow: 0 1.8vw 2.8vw rgba(0,0,0,.65);
+  }
+  .focused .tile-face::after, .card.focused::after { opacity: 1; }
+  .tile.focused .tile-name { opacity: .95; }
+
+  .wordmark { font-weight: 800; letter-spacing: -.01em; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 3vw; transform: translateX(-50%) translateY(1vw);
+    background: rgba(40,40,46,.92); padding: .9vw 1.8vw; border-radius: 2vw;
+    font-size: 1.1vw; opacity: 0; transition: opacity .25s ease, transform .25s ease;
+  }
+  .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="backdrop" id="bg0"></div>
+<div class="backdrop" id="bg1"></div>
+<div class="vignette"></div>
+<div class="clock" id="clock"></div>
+
+<div class="shelf" id="shelf"></div>
+<div class="dock"><div class="dock-row" id="dock"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+var NETFLIX = '11101200001';
+
+// App IDs come from this TV's installed-app list.
+var APPS = [
+  { id: NETFLIX, name: 'Netflix', glow: ['#7a0a10', '#1a0204'],
+    face: 'background:#000', mark: '<span class="wordmark" style="color:#e50914;font-size:2vw;letter-spacing:.04em">NETFLIX</span>',
+    shelf: [
+      { title: 'Suits', contentId: '70195800', bg: 'linear-gradient(135deg,#1d2b3a,#3b5268 60%,#8aa1b5)' },
+      { title: 'Gilmore Girls', contentId: '70155618', bg: 'linear-gradient(135deg,#5a2d1a,#a8643b 55%,#e8b77a)' },
+      { title: 'Young Sheldon', contentId: '80192612', bg: 'linear-gradient(135deg,#123a2a,#2f7a55 55%,#9fd3a6)' }
+    ] },
+  { id: '111299001912', name: 'YouTube', glow: ['#6b0f0f', '#160404'],
+    face: 'background:#fff', mark: '<span style="display:inline-block;width:2.6vw;height:1.85vw;border-radius:.55vw;background:#ff0000;position:relative;margin-right:.5vw;vertical-align:middle"><span style="position:absolute;left:1.05vw;top:.55vw;border-left:.75vw solid #fff;border-top:.38vw solid transparent;border-bottom:.38vw solid transparent"></span></span><span class="wordmark" style="color:#0f0f0f;font-size:1.6vw;vertical-align:middle">YouTube</span>',
+    sub: 'Videos, music and live streams' },
+  { id: '3201512006785', name: 'Prime Video', glow: ['#0a3a55', '#03121c'],
+    face: 'background:linear-gradient(135deg,#0f171e,#1b2a36)', mark: '<span class="wordmark" style="color:#00a8e1;font-size:1.55vw">prime video</span>',
+    sub: 'Movies and series' },
+  { id: '3201901017640', name: 'Disney+', glow: ['#0d2a7a', '#040a1f'],
+    face: 'background:linear-gradient(135deg,#0b1a4f,#1d4bb5)', mark: '<span class="wordmark" style="font-size:1.9vw">Disney<span style="color:#4fd1ff">+</span></span>',
+    sub: 'Disney, Pixar, Marvel and Star Wars' },
+  { id: '3201807016597', name: 'Apple TV', glow: ['#3a3a40', '#0c0c0e'],
+    face: 'background:linear-gradient(135deg,#1c1c1e,#3a3a3c)', mark: '<span class="wordmark" style="font-size:1.75vw">Apple TV</span>',
+    sub: 'Apple Originals' },
+  { id: '111477001006', name: 'RaiNews', glow: ['#003a70', '#000d1a'],
+    face: 'background:linear-gradient(135deg,#00305e,#0a5ca8)', mark: '<span class="wordmark" style="font-size:1.6vw">Rai<span style="font-weight:400">News</span></span>',
+    sub: 'Live news' },
+  { id: 'org.tizen.browser', name: 'Internet', glow: ['#14406b', '#050f1a'],
+    face: 'background:linear-gradient(135deg,#1565c0,#42a5f5)', mark: '<span class="wordmark" style="font-size:1.6vw">Internet</span>',
+    sub: 'Web browser' }
+];
+
+var zone = 'dock';
+var appIndex = 0;
+var cardIndex = 0;
+var bgFront = 0;
+
+try { appIndex = Math.min(+localStorage.getItem('home.app') || 0, APPS.length - 1); } catch (e) {}
+
+function $(id) { return document.getElementById(id); }
+
+function renderDock() {
+  $('dock').innerHTML = APPS.map(function (a, i) {
+    return '<div class="tile" data-i="' + i + '"><div class="tile-face shine" style="' + a.face + '">' + a.mark +
+      '</div><div class="tile-name">' + a.name + '</div></div>';
+  }).join('');
+}
+
+function renderShelf() {
+  var a = APPS[appIndex];
+  if (a.shelf) {
+    $('shelf').innerHTML = '<div class="hero-title">' + a.name + '</div>' +
+      '<div class="shelf-label">Up Next</div><div class="shelf-row">' +
+      a.shelf.map(function (s, i) {
+        return '<div class="card shine" data-i="' + i + '" style="background:' + s.bg + '">' +
+          '<div class="card-meta">N SERIES</div><div class="card-title">' + s.title + '</div></div>';
+      }).join('') + '</div>';
+  } else {
+    $('shelf').innerHTML = '<div class="hero-title">' + a.name + '</div><div class="hero-sub">' + a.sub + '</div>';
+  }
+}
+
+function setBackdrop() {
+  var g = APPS[appIndex].glow;
+  var next = $('bg' + (1 - bgFront));
+  next.style.background = 'radial-gradient(ellipse at 30% 20%, ' + g[0] + ' 0%, ' + g[1] + ' 55%, #08080b 100%)';
+  next.className = 'backdrop on';
+  $('bg' + bgFront).className = 'backdrop';
+  bgFront = 1 - bgFront;
+}
+
+function paintFocus() {
+  var tiles = $('dock').children;
+  // tile width + margin = 14.3vw; the row has 90.6vw visible after the side margins
+  var shift = Math.max(0, (appIndex + 1) * 14.3 - 90.6 + 3);
+  $('dock').style.transform = 'translateX(' + -shift + 'vw)';
+  for (var i = 0; i < tiles.length; i++) {
+    tiles[i].className = 'tile' + (zone === 'dock' && i === appIndex ? ' focused' : '');
+  }
+  var cards = document.querySelectorAll('.card');
+  for (var j = 0; j < cards.length; j++) {
+    cards[j].className = 'card shine' + (zone === 'shelf' && j === cardIndex ? ' focused' : '');
+  }
+}
+
+function selectApp(i) {
+  appIndex = Math.max(0, Math.min(APPS.length - 1, i));
+  try { localStorage.setItem('home.app', appIndex); } catch (e) {}
+  renderShelf();
+  setBackdrop();
+  paintFocus();
+}
+
+var toastTimer;
+function toast(msg) {
+  $('toast').textContent = msg;
+  $('toast').className = 'toast on';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { $('toast').className = 'toast'; }, 2200);
+}
+
+function launch(appId, label, contentId) {
+  if (!window.tizen) return toast('Would open ' + label);
+  var fail = function (e) { toast('Could not open ' + label + ': ' + e.message); };
+  if (!contentId) return tizen.application.launch(appId, null, fail);
+  // Same deep-link string tv.py sends; Samsung apps read it from PAYLOAD.
+  var data = [new tizen.ApplicationControlData('PAYLOAD',
+    [JSON.stringify({ values: 'm=watchlist&trackId=0&contentId=' + contentId })])];
+  var control = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', null, null, null, data);
+  tizen.application.launchAppControl(control, appId, null, function () {
+    tizen.application.launch(appId, null, fail);
+  });
+}
+
+document.addEventListener('keydown', function (e) {
+  var a = APPS[appIndex];
+  switch (e.keyCode) {
+    case 37: // left
+      if (zone === 'dock') selectApp(appIndex - 1);
+      else { cardIndex = Math.max(0, cardIndex - 1); paintFocus(); }
+      break;
+    case 39: // right
+      if (zone === 'dock') selectApp(appIndex + 1);
+      else { cardIndex = Math.min(a.shelf.length - 1, cardIndex + 1); paintFocus(); }
+      break;
+    case 38: // up
+      if (zone === 'dock' && a.shelf) { zone = 'shelf'; cardIndex = 0; paintFocus(); }
+      break;
+    case 40: // down
+      if (zone === 'shelf') { zone = 'dock'; paintFocus(); }
+      break;
+    case 13: // OK
+      if (zone === 'dock') launch(a.id, a.name);
+      else launch(a.id, a.shelf[cardIndex].title, a.shelf[cardIndex].contentId);
+      break;
+    default:
+      return;
+  }
+  e.preventDefault();
+});
+
+function tick() {
+  var d = new Date();
+  $('clock').textContent = d.getHours() + ':' + ('0' + d.getMinutes()).slice(-2);
+}
+
+renderDock();
+selectApp(appIndex);
+tick();
+setInterval(tick, 10000);
+</script>
+</body>
+</html>
