@@ -11,19 +11,19 @@ document.body.insertAdjacentHTML('afterbegin', `
 
   <div class="greeting"><div class="greet" id="greet"></div><div class="date" id="date"></div></div>
   <div class="glass" id="statusGlass">
-    <div class="gl"></div><div class="gl"></div><div class="tint"></div>
+    <canvas class="gl" width="128" height="72"></canvas><canvas class="gl" width="128" height="72"></canvas><div class="tint"></div>
     <div class="glass-in"><div class="weather" id="weather"></div><div class="divider"></div><div class="clock" id="clock"></div></div>
   </div>
 
   <div class="glass" id="heroGlass">
-    <div class="gl"></div><div class="gl"></div><div class="tint"></div>
+    <canvas class="gl" width="128" height="72"></canvas><canvas class="gl" width="128" height="72"></canvas><div class="tint"></div>
     <div class="glass-in" id="hero"></div>
   </div>
   <div class="hero-art" id="heroArt"></div>
   <div class="credit" id="credit"></div>
 
   <div class="glass" id="shelfGlass">
-    <div class="gl"></div><div class="gl"></div><div class="tint"></div>
+    <canvas class="gl" width="128" height="72"></canvas><canvas class="gl" width="128" height="72"></canvas><div class="tint"></div>
     <div class="glass-in">
       <div class="row-label" id="rowLabel"></div>
       <div class="row-wrap"><div class="strip" id="row"></div></div>
@@ -37,7 +37,7 @@ document.body.insertAdjacentHTML('afterbegin', `
 </div>
 
 <div class="screen" id="browse">
-  <div class="browse-bg" id="browseBg"></div>
+  <canvas class="browse-bg" id="browseBg" width="128" height="72"></canvas>
   <div class="browse-head"><div class="browse-title" id="browseTitle"></div><div class="browse-sub" id="browseSub"></div></div>
   <div class="browse-hint">BACK to return</div>
   <div class="browse-view"><div class="browse-rows" id="browseRows"></div></div>
@@ -60,7 +60,7 @@ document.body.insertAdjacentHTML('afterbegin', `
 var TV_API = 'http://127.0.0.1:8001/api/v2/applications/';
 var IPTV = 'https://iptv-org.github.io/iptv/';
 var HLS_JS = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
-var ROTATE_MS = 8000;
+var ROTATE_MS = 10000;
 var AMBIENT_MS = 45000;
 
 var K = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13, BACK: 10009, ESC: 27, BKSP: 8,
@@ -176,35 +176,56 @@ function openApp(app) {
 }
 
 // ---------- background + liquid glass ----------
-// Chrome 56 has no backdrop-filter, so every .glass panel holds its own copy of the
-// background, sized and offset in px to line up with the full-screen one, then blurred.
-var VW, VH, M;
+// Chrome 56 has no backdrop-filter, and CSS blur filters were too slow on the TV. Each
+// .glass panel instead holds a canvas sized and offset to cover the whole screen, showing
+// a 128x72 copy of the background: stretching it that far is the blur, at almost no cost.
+var FW = 128, FH = 72;
+var VW, VH;
 var glasses = [];
-var bg = { url: null, front: 0, soft: false, credit: '', geo: null };
+var bg = { url: null, front: 0, credit: '', frost: null };
 
 function initGlass() {
   VW = window.innerWidth;
   VH = window.innerHeight;
-  M = Math.round(VW * 0.03); // room for the blur to bleed past the panel edge
   glasses = [].slice.call(document.querySelectorAll('.glass')).map(function (el) {
     var r = el.getBoundingClientRect(), layers = el.querySelectorAll('.gl');
     for (var i = 0; i < layers.length; i++) {
       var s = layers[i].style;
-      s.left = s.top = -M + 'px';
-      s.width = (r.width + 2 * M) + 'px';
-      s.height = (r.height + 2 * M) + 'px';
+      s.left = -r.left + 'px';
+      s.top = -r.top + 'px';
+      s.width = VW + 'px';
+      s.height = VH + 'px';
     }
-    return { L: r.left, T: r.top, layers: layers };
+    return layers;
   });
 }
 
-function paint(el, css, g, dx, dy) {
-  el.style.backgroundImage = css;
-  el.style.backgroundSize = g.w + 'px ' + g.h + 'px';
-  el.style.backgroundPosition = (g.x + dx) + 'px ' + (g.y + dy) + 'px';
+// Halve the size step by step so the tiny copy is smooth rather than speckled, then darken it.
+function frost(img, g) {
+  var src = document.createElement('canvas');
+  src.width = FW * 4;
+  src.height = FH * 4;
+  src.getContext('2d').drawImage(img, g.x / VW * src.width, g.y / VH * src.height, g.w / VW * src.width, g.h / VH * src.height);
+  while (src.width > FW) {
+    var half = document.createElement('canvas');
+    half.width = src.width / 2;
+    half.height = src.height / 2;
+    half.getContext('2d').drawImage(src, 0, 0, half.width, half.height);
+    src = half;
+  }
+  var c = src.getContext('2d');
+  c.fillStyle = 'rgba(0,0,0,.32)';
+  c.fillRect(0, 0, FW, FH);
+  return src;
 }
 
-function setBackground(url, soft, credit) {
+function drawFrost(canvas, src) {
+  var c = canvas.getContext('2d');
+  c.clearRect(0, 0, FW, FH);
+  c.drawImage(src, 0, 0);
+}
+
+function setBackground(url, credit) {
   if (!url || url === bg.url) return;
   bg.url = url;
   var img = new Image();
@@ -214,19 +235,20 @@ function setBackground(url, soft, credit) {
     var g = { w: img.naturalWidth * s, h: img.naturalHeight * s };
     g.x = (VW - g.w) / 2;
     g.y = (VH - g.h) * 0.35;
-    var css = 'url("' + url.replace(/"/g, '%22') + '")', next = 1 - bg.front, prev = bg.front;
-    paint($('bg' + next), css, g, 0, 0);
-    $('bg' + next).className = 'bg on' + (soft ? ' soft' : '');
-    $('bg' + prev).className = 'bg' + (bg.soft ? ' soft' : '');
-    glasses.forEach(function (gl) {
-      paint(gl.layers[next], css, g, M - gl.L, M - gl.T);
-      gl.layers[next].className = 'gl on';
-      gl.layers[prev].className = 'gl';
+    var next = 1 - bg.front, el = $('bg' + next);
+    el.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")';
+    el.style.backgroundSize = g.w + 'px ' + g.h + 'px';
+    el.style.backgroundPosition = g.x + 'px ' + g.y + 'px';
+    el.className = 'bg on';
+    $('bg' + bg.front).className = 'bg';
+    bg.frost = frost(img, g);
+    glasses.forEach(function (layers) {
+      drawFrost(layers[next], bg.frost);
+      layers[next].className = 'gl on';
+      layers[1 - next].className = 'gl';
     });
     bg.front = next;
-    bg.soft = soft;
     bg.credit = credit;
-    bg.geo = g;
     $('credit').textContent = credit || '';
   };
   img.src = url;
@@ -261,7 +283,7 @@ function showAmbient() {
   ambientOn = true;
   if (!ambient.length) return;
   var a = ambient[ambientIdx % ambient.length];
-  setBackground(a.url, false, a.credit);
+  setBackground(a.url, a.credit);
 }
 
 // TVmaze widescreen backdrops, looked up once per show
@@ -286,11 +308,11 @@ function backgroundFor(it) {
   bgTimer = setTimeout(function () {
     if (!it || it.kind === 'channel') return showAmbient();
     ambientOn = false;
-    if (it.kind === 'film') return setBackground(it.image, true, 'Internet Archive · public domain');
+    if (it.kind === 'film') return setBackground(it.image, 'Internet Archive · public domain');
     backdrop(it).then(function (url) {
       if (currentItem() !== it) return;
-      if (url) setBackground(url, false, 'Image: TVmaze');
-      else setBackground(it.art, true, 'Image: TVmaze');
+      if (url) setBackground(url, 'Image: TVmaze');
+      else setBackground(it.art, 'Image: TVmaze');
     });
   }, 350);
 }
@@ -330,6 +352,12 @@ function loadNewShows() {
 }
 
 // ---------- data: live TV (iptv-org public playlists) ----------
+// Many logos are 960px Wikimedia thumbnails; ask Wikimedia for 320px ones instead.
+function smallLogo(u) {
+  return u && u.indexOf('upload.wikimedia.org') > -1 && u.indexOf('/thumb/') > -1
+    ? u.replace(/\/\d+px-([^\/]+)$/, '/320px-$1') : u;
+}
+
 function parseM3U(text) {
   var lines = text.split('\n'), out = [];
   for (var i = 0; i < lines.length; i++) {
@@ -339,7 +367,7 @@ function parseM3U(text) {
     var raw = lines[i].slice(lines[i].lastIndexOf(',') + 1).trim();
     out.push({
       kind: 'channel', url: url,
-      image: (lines[i].match(/tvg-logo="([^"]*)"/) || [])[1],
+      image: smallLogo((lines[i].match(/tvg-logo="([^"]*)"/) || [])[1]),
       title: raw.replace(/\s*\[[^\]]*\]/g, '').replace(/\s*\(\d+p\)/g, '').trim(),
       res: +((raw.match(/\((\d+)p\)/) || [])[1] || 0),
       flaky: /\[(not 24\/7|geo-blocked)\]/i.test(raw)
@@ -490,12 +518,15 @@ function renderDock() {
   }).join('');
 }
 
-function cardHtml(it) {
+// Only the first few cards get their image straight away; hydrate() fills in the rest
+// as focus nears them, so a 60-channel row doesn't decode 60 logos at once.
+function cardHtml(it, i) {
+  var src = (i < 12 ? 'src="' : 'data-src="') + esc(it.image) + '"';
   if (it.kind === 'show') {
-    return '<div class="poster shine"><img src="' + esc(it.image) + '" alt=""></div>';
+    return '<div class="poster shine"><img ' + src + ' alt=""></div>';
   }
   var img = it.image
-    ? '<img class="' + (it.kind === 'film' ? 'cover' : 'logo') + '" src="' + esc(it.image) + '" alt="" onerror="this.style.display=\'none\'">'
+    ? '<img class="' + (it.kind === 'film' ? 'cover' : 'logo') + '" ' + src + ' alt="" onerror="this.style.display=\'none\'">'
     : '';
   return '<div class="card-wrap"><div class="card shine">' + img + (it.kind === 'channel' ? '<span class="live">LIVE</span>' : '') +
     '</div><div class="card-title">' + esc(it.title) + '</div></div>';
@@ -563,7 +594,16 @@ function scrollStrip(el, index, step, visible) {
   el.style.transform = 'translateX(' + -shift + 'vw)';
 }
 
+function hydrate(strip, center) {
+  var kids = strip.children;
+  for (var i = Math.max(0, center - 2); i < Math.min(kids.length, center + 13); i++) {
+    var img = kids[i].querySelector('img[data-src]');
+    if (img) { img.src = img.getAttribute('data-src'); img.removeAttribute('data-src'); }
+  }
+}
+
 function paintFocus() {
+  hydrate($('row'), zone === 'row' ? itemIndex : 0);
   var tiles = $('dock').children;
   for (var i = 0; i < tiles.length; i++) tiles[i].classList.toggle('focused', zone === 'dock' && i === appIndex);
   var cards = $('row').children;
@@ -624,10 +664,7 @@ function openBrowse(title, sub, rows, loader) {
   screen = 'browse';
   browse = { rows: rows, items: rows.map(function () { return []; }), row: 0,
     col: rows.map(function () { return 0; }), loader: loader, asked: [] };
-  var front = $('bg' + bg.front);
-  $('browseBg').style.backgroundImage = front.style.backgroundImage;
-  $('browseBg').style.backgroundSize = front.style.backgroundSize;
-  $('browseBg').style.backgroundPosition = front.style.backgroundPosition;
+  if (bg.frost) drawFrost($('browseBg'), bg.frost);
   $('browseTitle').textContent = title;
   $('browseSub').textContent = sub;
   $('browseRows').innerHTML = rows.map(function (r, i) {
@@ -659,6 +696,7 @@ function paintBrowse() {
   loadNearbyRows();
   for (var r = Math.max(0, browse.row - 2); r <= Math.min(browse.rows.length - 1, browse.row + 2); r++) {
     var strip = $('brow' + r), kids = strip.children;
+    hydrate(strip, browse.col[r]);
     for (var c = 0; c < kids.length; c++) kids[c].classList.toggle('focused', r === browse.row && c === browse.col[r]);
     scrollStrip(strip, browse.col[r], 16.5, 90.6);
   }
@@ -763,6 +801,7 @@ function fmt(t) {
 function play(list, i, from) {
   player = { list: list, i: i, from: from };
   screen = 'player';
+  document.documentElement.classList.add('playing');
   $('player').className = 'screen on';
   $('bar').className = 'bar';
   startItem();
@@ -791,6 +830,7 @@ function closePlayer() {
   setSpin(false);
   setMsg('');
   $('player').className = 'screen';
+  document.documentElement.classList.remove('playing');
   screen = player.from;
 }
 
@@ -840,7 +880,7 @@ window.addEventListener('resize', function () {
   initGlass();
   var u = bg.url;
   bg.url = null;
-  setBackground(u, bg.soft, bg.credit);
+  setBackground(u, bg.credit);
 });
 
 // ---------- clock ----------
