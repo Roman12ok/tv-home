@@ -1,9 +1,9 @@
 {
   "name": "tv-home",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Apple TV-style home screen for a Samsung Tizen TV",
   "packageType": "app",
   "appName": "Home",
   "appPath": "app/index.html",
-  "keys": []
+  "keys": ["ChannelUp", "ChannelDown", "MediaPlayPause", "MediaPlay", "MediaPause", "MediaRewind", "MediaFastForward"]
 }

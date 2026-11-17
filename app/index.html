@@ -5,243 +5,267 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Home</title>
 <style>
-  /* Sized in vw so it scales to the TV's 1920x1080 page. Avoids CSS newer than
-     Chrome 56 (Tizen 4.0): no flex gap, aspect-ratio or backdrop-filter. */
+  /* Laid out in vw for a 16:9 1920x1080 page (100vw x 56.25vw). Uses only CSS that
+     Chrome 56 (Tizen 4.0) supports: no grid, flex gap, aspect-ratio or backdrop-filter.
+     Animations stick to transform and opacity so a 2018 TV stays smooth. */
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #08080b; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #07070a; }
   body {
     color: #fff;
     font-family: -apple-system, "SF Pro Display", "Helvetica Neue", "SamsungOne", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
+  img { display: block; }
 
-  .backdrop {
-    position: fixed; top: -10%; left: -10%; width: 120%; height: 120%;
-    filter: blur(5vw); opacity: 0; transition: opacity .6s ease;
+  /* ---------- backdrop ---------- */
+  .glow, .art {
+    position: fixed; top: -8%; left: -8%; width: 116%; height: 116%;
+    opacity: 0; transition: opacity .9s ease;
   }
-  .backdrop.on { opacity: 1; }
+  .glow { filter: blur(5vw); }
+  .art {
+    background-size: cover; background-position: center 30%;
+    filter: blur(2.4vw) brightness(.5) saturate(1.35);
+    animation: kenburns 26s ease-in-out infinite alternate;
+  }
+  .glow.on, .art.on { opacity: 1; }
+  @keyframes kenburns {
+    from { transform: scale(1.04) translate(0, 0); }
+    to   { transform: scale(1.16) translate(-2%, -1.5%); }
+  }
   .vignette {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(to bottom, rgba(0,0,0,.15) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,.85) 100%);
+    background:
+      linear-gradient(to right, rgba(5,5,8,.82) 0%, rgba(5,5,8,.35) 55%, rgba(5,5,8,.1) 100%),
+      linear-gradient(to bottom, rgba(0,0,0,0) 35%, rgba(0,0,0,.88) 100%);
   }
 
-  .clock {
-    position: fixed; top: 2.6vw; right: 4.7vw;
-    font-size: 1.55vw; font-weight: 500; opacity: .85; letter-spacing: .02em;
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: absolute; top: 2.2vw; left: 4.7vw; right: 4.7vw;
+    display: flex; justify-content: space-between; align-items: center;
   }
+  .greet { font-size: 1.45vw; font-weight: 600; }
+  .date { font-size: .95vw; opacity: .6; margin-top: .2vw; }
+  .status { display: flex; align-items: center; }
+  .weather { display: flex; align-items: center; margin-right: 2.2vw; opacity: 0; transition: opacity .6s; }
+  .weather.on { opacity: 1; }
+  .weather svg { width: 2vw; height: 2vw; margin-right: .6vw; }
+  .temp { font-size: 1.5vw; font-weight: 500; }
+  .wx-sub { font-size: .85vw; opacity: .6; margin-left: .7vw; line-height: 1.25; }
+  .clock { font-size: 1.5vw; font-weight: 500; letter-spacing: .02em; }
 
-  .shelf { position: absolute; left: 4.7vw; right: 4.7vw; top: 7vw; height: 22vw; }
-  .hero-title { font-size: 4.4vw; font-weight: 700; letter-spacing: -.02em; }
-  .hero-sub { font-size: 1.45vw; opacity: .7; margin-top: .6vw; }
-  .shelf-label { font-size: 1.25vw; font-weight: 600; opacity: .75; margin: 2.2vw 0 1vw; }
-  .shelf-row { display: flex; }
+  /* ---------- hero ---------- */
+  .hero { position: absolute; left: 4.7vw; top: 6.6vw; width: 52vw; height: 16vw; }
+  .kicker {
+    display: inline-block; font-size: .85vw; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; padding: .3vw .7vw; border-radius: .35vw;
+    background: rgba(255,255,255,.14);
+  }
+  .hero-title {
+    font-size: 3.5vw; font-weight: 800; letter-spacing: -.02em; line-height: 1.05;
+    margin-top: .9vw; max-height: 7.4vw; overflow: hidden;
+  }
+  .hero-meta { font-size: 1.05vw; opacity: .72; margin-top: .8vw; }
+  .hero-summary {
+    font-size: 1.12vw; line-height: 1.45; opacity: .82; margin-top: .7vw; max-width: 44vw;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .swap { animation: fadeUp .55s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(1.2vw); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .hero-art {
+    position: absolute; right: 6vw; top: 5.4vw; height: 17vw; width: 30vw;
+    display: flex; align-items: center; justify-content: flex-end;
+  }
+  .hero-art img {
+    max-height: 17vw; max-width: 30vw; border-radius: .9vw;
+    box-shadow: 0 2vw 4vw rgba(0,0,0,.6);
+    animation: float 7s ease-in-out infinite alternate;
+  }
+  .hero-art img.logo { background: rgba(255,255,255,.92); padding: 1.6vw; max-height: 11vw; max-width: 22vw; }
+  @keyframes float {
+    from { transform: translateY(-.35vw) rotate(-.6deg); }
+    to   { transform: translateY(.35vw) rotate(.6deg); }
+  }
+  .credit { position: absolute; right: 4.7vw; top: 23.3vw; font-size: .7vw; opacity: .4; }
 
-  .card {
-    position: relative; width: 19vw; height: 10.7vw; margin-right: 1.8vw;
-    border-radius: .9vw; overflow: hidden;
-    box-shadow: 0 .6vw 1.4vw rgba(0,0,0,.45);
-    transition: transform .2s ease, box-shadow .2s ease;
-  }
-  .card-title {
-    position: absolute; left: 1.2vw; bottom: 1vw; right: 1.2vw;
-    font-size: 1.6vw; font-weight: 700; text-shadow: 0 .15vw .5vw rgba(0,0,0,.5);
-  }
-  .card-meta {
-    position: absolute; left: 1.2vw; top: 1vw;
-    font-size: .85vw; font-weight: 700; letter-spacing: .12em; color: rgba(255,255,255,.85);
-  }
+  /* ---------- rows ---------- */
+  .row-label { position: absolute; left: 4.7vw; top: 23.4vw; font-size: 1.15vw; font-weight: 600; opacity: .8; }
+  .row-wrap { position: absolute; left: 4.7vw; right: 0; top: 25.2vw; height: 13vw; }
+  .strip { display: flex; transition: transform .3s cubic-bezier(.2,.7,.2,1); }
 
-  .dock { position: absolute; left: 4.7vw; right: 0; top: 33.5vw; height: 14vw; }
-  .dock-row { display: flex; padding-top: 1.2vw; transition: transform .25s ease; }
-  .tile { width: 12.6vw; margin-right: 1.7vw; flex: none; }
+  .poster, .card { position: relative; flex: none; border-radius: .7vw; overflow: hidden; background: #1b1b22;
+    box-shadow: 0 .5vw 1.2vw rgba(0,0,0,.45); transition: transform .22s ease, box-shadow .22s ease; }
+  .poster { width: 7.6vw; height: 11.4vw; margin-right: 1.3vw; }
+  .poster img { width: 100%; height: 100%; object-fit: cover; }
+  .poster .ph { position: absolute; left: .6vw; right: .6vw; bottom: .6vw; font-size: .85vw; font-weight: 700; }
+
+  .card-wrap { flex: none; width: 15vw; margin-right: 1.5vw; }
+  .card { width: 100%; height: 8.44vw; display: flex; align-items: center; justify-content: center; }
+  .card img.cover { width: 100%; height: 100%; object-fit: cover; }
+  .card img.logo { max-width: 70%; max-height: 62%; }
+  .card .live { position: absolute; left: .6vw; top: .6vw; font-size: .65vw; font-weight: 800; letter-spacing: .12em;
+    background: #ff2d55; padding: .15vw .45vw; border-radius: .25vw; }
+  .card-title { font-size: .95vw; font-weight: 500; margin-top: .9vw; opacity: .55;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .2s; }
+
+  .row-empty { font-size: 1.1vw; opacity: .5; padding-top: 4vw; }
+
+  /* ---------- dock ---------- */
+  .dock { position: absolute; left: 4.7vw; right: 0; top: 38.6vw; height: 12vw; }
+  .tile { width: 12.6vw; margin-right: 1.7vw; flex: none; animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(2.5vw); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .tile-face {
-    position: relative; width: 100%; height: 7.6vw; border-radius: .9vw; overflow: hidden;
+    position: relative; width: 100%; height: 7.4vw; border-radius: .9vw; overflow: hidden;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 .5vw 1.2vw rgba(0,0,0,.4);
-    transition: transform .2s ease, box-shadow .2s ease;
+    transition: transform .22s ease, box-shadow .22s ease;
   }
-  .tile-name {
-    text-align: center; font-size: 1.05vw; font-weight: 500; margin-top: 1.5vw;
-    opacity: 0; transition: opacity .2s ease;
-  }
+  .tile-name { text-align: center; font-size: 1vw; font-weight: 500; margin-top: 1.4vw; opacity: 0; transition: opacity .2s; }
+  .wordmark { font-weight: 800; letter-spacing: -.01em; }
+  .live-dot { display: inline-block; width: .9vw; height: .9vw; border-radius: 50%; background: #fff;
+    margin-right: .6vw; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } }
 
-  /* tvOS-style focus: lift, enlarge, deepen the shadow and add a soft sheen */
+  /* ---------- focus (tvOS style: lift, grow, deeper shadow, sheen) ---------- */
   .shine::after {
     content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(160deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 45%);
-    opacity: 0; transition: opacity .2s ease;
+    background: linear-gradient(160deg, rgba(255,255,255,.3) 0%, rgba(255,255,255,0) 45%);
+    opacity: 0; transition: opacity .22s ease;
   }
-  .focused .tile-face, .card.focused {
-    transform: scale(1.14) translateY(-.3vw);
-    box-shadow: 0 1.8vw 2.8vw rgba(0,0,0,.65);
+  .focused .tile-face, .poster.focused, .focused .card {
+    transform: scale(1.13) translateY(-.3vw);
+    box-shadow: 0 1.8vw 2.8vw rgba(0,0,0,.7), 0 0 0 .18vw rgba(255,255,255,.85);
   }
-  .focused .tile-face::after, .card.focused::after { opacity: 1; }
-  .tile.focused .tile-name { opacity: .95; }
+  .focused .tile-face::after, .poster.focused::after, .focused .card::after { opacity: 1; }
+  .tile.focused .tile-name, .card-wrap.focused .card-title { opacity: 1; }
 
-  .wordmark { font-weight: 800; letter-spacing: -.01em; }
+  /* ---------- news ticker ---------- */
+  .ticker {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 3vw;
+    background: rgba(0,0,0,.45); display: flex; align-items: center; overflow: hidden;
+    opacity: 0; transition: opacity .6s;
+  }
+  .ticker.on { opacity: 1; }
+  .ticker-label {
+    position: relative; z-index: 1; flex: none; margin-left: 4.7vw; margin-right: 1.4vw;
+    font-size: .8vw; font-weight: 800; letter-spacing: .14em; background: #bb1919; padding: .3vw .7vw; border-radius: .3vw;
+  }
+  .ticker-track { position: relative; flex: 1; height: 100%; overflow: hidden; }
+  .ticker-text {
+    position: absolute; top: 0; left: 0; height: 100%; display: flex; align-items: center;
+    white-space: nowrap; font-size: 1.05vw; opacity: .9;
+    animation: marquee linear infinite;
+  }
+  .ticker-text span { margin-right: 3vw; }
+  .ticker-text b { color: #ff6b6b; margin-right: 3vw; }
+  @keyframes marquee { from { transform: translateX(80vw); } to { transform: translateX(-100%); } }
+
+  /* ---------- browse screen ---------- */
+  .screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 5; }
+  .screen.on { display: block; animation: screenIn .45s cubic-bezier(.2,.7,.2,1) both; }
+  @keyframes screenIn { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: scale(1); } }
+  #browse { background: radial-gradient(ellipse at 20% 0%, #26263a 0%, #0b0b11 60%); overflow: hidden; }
+  .browse-head { position: absolute; left: 4.7vw; top: 2.6vw; }
+  .browse-title { font-size: 2.9vw; font-weight: 800; letter-spacing: -.02em; }
+  .browse-sub { font-size: 1vw; opacity: .6; margin-top: .4vw; }
+  .browse-rows { position: absolute; left: 4.7vw; right: 0; top: 8.6vw; transition: transform .35s cubic-bezier(.2,.7,.2,1); }
+  .brow { height: 14.2vw; }
+  .brow-label { font-size: 1.2vw; font-weight: 600; opacity: .8; margin-bottom: 1vw; }
+  .browse-hint { position: absolute; right: 4.7vw; top: 3.6vw; font-size: .9vw; opacity: .45; }
+
+  /* ---------- player ---------- */
+  #player { background: #000; }
+  #video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; }
+  .banner {
+    position: absolute; left: 0; right: 0; top: 0; padding: 2.4vw 4.7vw 5vw;
+    background: linear-gradient(to bottom, rgba(0,0,0,.85), rgba(0,0,0,0));
+    display: flex; align-items: center;
+    transform: translateY(-100%); opacity: 0; transition: transform .4s ease, opacity .4s ease;
+  }
+  .banner.on { transform: translateY(0); opacity: 1; }
+  .banner img { max-height: 4vw; max-width: 9vw; margin-right: 1.6vw; border-radius: .4vw; background: rgba(255,255,255,.9); padding: .4vw; }
+  .banner-title { font-size: 1.9vw; font-weight: 700; }
+  .banner-sub { font-size: 1vw; opacity: .7; margin-top: .3vw; }
+  .bar {
+    position: absolute; left: 4.7vw; right: 4.7vw; bottom: 3vw; opacity: 0; transition: opacity .4s;
+  }
+  .bar.on { opacity: 1; }
+  .bar-track { height: .35vw; border-radius: .2vw; background: rgba(255,255,255,.25); overflow: hidden; }
+  .bar-fill { height: 100%; width: 0; background: #fff; }
+  .bar-time { display: flex; justify-content: space-between; font-size: .95vw; opacity: .8; margin-top: .6vw; }
+  .msg { position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-size: 1.4vw; opacity: 0; transition: opacity .3s; }
+  .msg.on { opacity: .9; }
+  .spinner {
+    position: absolute; left: 50%; top: 50%; width: 3.6vw; height: 3.6vw; margin: -1.8vw 0 0 -1.8vw;
+    border: .3vw solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%;
+    animation: spin .9s linear infinite; display: none;
+  }
+  .spinner.on { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .toast {
-    position: fixed; left: 50%; bottom: 3vw; transform: translateX(-50%) translateY(1vw);
-    background: rgba(40,40,46,.92); padding: .9vw 1.8vw; border-radius: 2vw;
-    font-size: 1.1vw; opacity: 0; transition: opacity .25s ease, transform .25s ease;
+    position: fixed; left: 50%; bottom: 4.4vw; transform: translateX(-50%) translateY(1vw);
+    background: rgba(40,40,46,.94); padding: .9vw 1.8vw; border-radius: 2vw;
+    font-size: 1.1vw; opacity: 0; transition: opacity .25s ease, transform .25s ease; z-index: 10;
   }
   .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
-<div class="backdrop" id="bg0"></div>
-<div class="backdrop" id="bg1"></div>
-<div class="vignette"></div>
-<div class="clock" id="clock"></div>
+<div id="home">
+  <div class="glow" id="glow0"></div>
+  <div class="glow" id="glow1"></div>
+  <div class="art" id="art0"></div>
+  <div class="art" id="art1"></div>
+  <div class="vignette"></div>
 
-<div class="shelf" id="shelf"></div>
-<div class="dock"><div class="dock-row" id="dock"></div></div>
+  <div class="topbar">
+    <div><div class="greet" id="greet"></div><div class="date" id="date"></div></div>
+    <div class="status">
+      <div class="weather" id="weather"></div>
+      <div class="clock" id="clock"></div>
+    </div>
+  </div>
+
+  <div class="hero" id="hero"></div>
+  <div class="hero-art" id="heroArt"></div>
+  <div class="credit" id="credit"></div>
+
+  <div class="row-label" id="rowLabel"></div>
+  <div class="row-wrap"><div class="strip" id="row"></div></div>
+  <div class="dock"><div class="strip" id="dock"></div></div>
+
+  <div class="ticker" id="ticker">
+    <div class="ticker-label">BBC NEWS</div>
+    <div class="ticker-track"><div class="ticker-text" id="tickerText"></div></div>
+  </div>
+</div>
+
+<div class="screen" id="browse">
+  <div class="browse-head"><div class="browse-title" id="browseTitle"></div><div class="browse-sub" id="browseSub"></div></div>
+  <div class="browse-hint">BACK to return</div>
+  <div class="browse-rows" id="browseRows"></div>
+</div>
+
+<div class="screen" id="player">
+  <video id="video" autoplay playsinline></video>
+  <div class="spinner" id="spinner"></div>
+  <div class="msg" id="msg"></div>
+  <div class="banner" id="banner"></div>
+  <div class="bar" id="bar">
+    <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+    <div class="bar-time"><span id="barNow"></span><span id="barEnd"></span></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
-
-<script>
-var NETFLIX = '11101200001';
-
-// App IDs come from this TV's installed-app list.
-var APPS = [
-  { id: NETFLIX, name: 'Netflix', glow: ['#7a0a10', '#1a0204'],
-    face: 'background:#000', mark: '<span class="wordmark" style="color:#e50914;font-size:2vw;letter-spacing:.04em">NETFLIX</span>',
-    shelf: [
-      { title: 'Suits', bg: 'linear-gradient(135deg,#1d2b3a,#3b5268 60%,#8aa1b5)' },
-      { title: 'Gilmore Girls', bg: 'linear-gradient(135deg,#5a2d1a,#a8643b 55%,#e8b77a)' },
-      { title: 'Young Sheldon', bg: 'linear-gradient(135deg,#123a2a,#2f7a55 55%,#9fd3a6)' }
-    ] },
-  { id: '111299001912', name: 'YouTube', glow: ['#6b0f0f', '#160404'],
-    face: 'background:#fff', mark: '<span style="display:inline-block;width:2.6vw;height:1.85vw;border-radius:.55vw;background:#ff0000;position:relative;margin-right:.5vw;vertical-align:middle"><span style="position:absolute;left:1.05vw;top:.55vw;border-left:.75vw solid #fff;border-top:.38vw solid transparent;border-bottom:.38vw solid transparent"></span></span><span class="wordmark" style="color:#0f0f0f;font-size:1.6vw;vertical-align:middle">YouTube</span>',
-    sub: 'Videos, music and live streams' },
-  { id: '3201512006785', name: 'Prime Video', glow: ['#0a3a55', '#03121c'],
-    face: 'background:linear-gradient(135deg,#0f171e,#1b2a36)', mark: '<span class="wordmark" style="color:#00a8e1;font-size:1.55vw">prime video</span>',
-    sub: 'Movies and series' },
-  { id: '3201901017640', name: 'Disney+', glow: ['#0d2a7a', '#040a1f'],
-    face: 'background:linear-gradient(135deg,#0b1a4f,#1d4bb5)', mark: '<span class="wordmark" style="font-size:1.9vw">Disney<span style="color:#4fd1ff">+</span></span>',
-    sub: 'Disney, Pixar, Marvel and Star Wars' },
-  { id: '3201807016597', name: 'Apple TV', glow: ['#3a3a40', '#0c0c0e'],
-    face: 'background:linear-gradient(135deg,#1c1c1e,#3a3a3c)', mark: '<span class="wordmark" style="font-size:1.75vw">Apple TV</span>',
-    sub: 'Apple Originals' },
-  { id: '111477001006', name: 'RaiNews', glow: ['#003a70', '#000d1a'],
-    face: 'background:linear-gradient(135deg,#00305e,#0a5ca8)', mark: '<span class="wordmark" style="font-size:1.6vw">Rai<span style="font-weight:400">News</span></span>',
-    sub: 'Live news' },
-  { id: 'org.tizen.browser', name: 'Internet', glow: ['#14406b', '#050f1a'],
-    face: 'background:linear-gradient(135deg,#1565c0,#42a5f5)', mark: '<span class="wordmark" style="font-size:1.6vw">Internet</span>',
-    sub: 'Web browser' }
-];
-
-var zone = 'dock';
-var appIndex = 0;
-var cardIndex = 0;
-var bgFront = 0;
-
-try { appIndex = Math.min(+localStorage.getItem('home.app') || 0, APPS.length - 1); } catch (e) {}
-
-function $(id) { return document.getElementById(id); }
-
-function renderDock() {
-  $('dock').innerHTML = APPS.map(function (a, i) {
-    return '<div class="tile" data-i="' + i + '"><div class="tile-face shine" style="' + a.face + '">' + a.mark +
-      '</div><div class="tile-name">' + a.name + '</div></div>';
-  }).join('');
-}
-
-function renderShelf() {
-  var a = APPS[appIndex];
-  if (a.shelf) {
-    $('shelf').innerHTML = '<div class="hero-title">' + a.name + '</div>' +
-      '<div class="shelf-label">Up Next</div><div class="shelf-row">' +
-      a.shelf.map(function (s, i) {
-        return '<div class="card shine" data-i="' + i + '" style="background:' + s.bg + '">' +
-          '<div class="card-meta">N SERIES</div><div class="card-title">' + s.title + '</div></div>';
-      }).join('') + '</div>';
-  } else {
-    $('shelf').innerHTML = '<div class="hero-title">' + a.name + '</div><div class="hero-sub">' + a.sub + '</div>';
-  }
-}
-
-function setBackdrop() {
-  var g = APPS[appIndex].glow;
-  var next = $('bg' + (1 - bgFront));
-  next.style.background = 'radial-gradient(ellipse at 30% 20%, ' + g[0] + ' 0%, ' + g[1] + ' 55%, #08080b 100%)';
-  next.className = 'backdrop on';
-  $('bg' + bgFront).className = 'backdrop';
-  bgFront = 1 - bgFront;
-}
-
-function paintFocus() {
-  var tiles = $('dock').children;
-  // tile width + margin = 14.3vw; the row has 90.6vw visible after the side margins
-  var shift = Math.max(0, (appIndex + 1) * 14.3 - 90.6 + 3);
-  $('dock').style.transform = 'translateX(' + -shift + 'vw)';
-  for (var i = 0; i < tiles.length; i++) {
-    tiles[i].className = 'tile' + (zone === 'dock' && i === appIndex ? ' focused' : '');
-  }
-  var cards = document.querySelectorAll('.card');
-  for (var j = 0; j < cards.length; j++) {
-    cards[j].className = 'card shine' + (zone === 'shelf' && j === cardIndex ? ' focused' : '');
-  }
-}
-
-function selectApp(i) {
-  appIndex = Math.max(0, Math.min(APPS.length - 1, i));
-  try { localStorage.setItem('home.app', appIndex); } catch (e) {}
-  renderShelf();
-  setBackdrop();
-  paintFocus();
-}
-
-var toastTimer;
-function toast(msg) {
-  $('toast').textContent = msg;
-  $('toast').className = 'toast on';
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(function () { $('toast').className = 'toast'; }, 2200);
-}
-
-// TizenBrew pages get no `tizen` API, so use the TV's own REST API, which opens
-// apps without a pairing token. It rejects deep-link data, so shows open Netflix.
-function launch(appId, label) {
-  toast('Opening ' + label);
-  fetch('http://127.0.0.1:8001/api/v2/applications/' + appId, { method: 'POST', mode: 'no-cors' })
-    .catch(function () { toast('Could not open ' + label); });
-}
-
-document.addEventListener('keydown', function (e) {
-  var a = APPS[appIndex];
-  switch (e.keyCode) {
-    case 37: // left
-      if (zone === 'dock') selectApp(appIndex - 1);
-      else { cardIndex = Math.max(0, cardIndex - 1); paintFocus(); }
-      break;
-    case 39: // right
-      if (zone === 'dock') selectApp(appIndex + 1);
-      else { cardIndex = Math.min(a.shelf.length - 1, cardIndex + 1); paintFocus(); }
-      break;
-    case 38: // up
-      if (zone === 'dock' && a.shelf) { zone = 'shelf'; cardIndex = 0; paintFocus(); }
-      break;
-    case 40: // down
-      if (zone === 'shelf') { zone = 'dock'; paintFocus(); }
-      break;
-    case 13: // OK
-      launch(a.id, a.name);
-      break;
-    default:
-      return;
-  }
-  e.preventDefault();
-});
-
-function tick() {
-  var d = new Date();
-  $('clock').textContent = d.getHours() + ':' + ('0' + d.getMinutes()).slice(-2);
-}
-
-renderDock();
-selectApp(appIndex);
-tick();
-setInterval(tick, 10000);
-</script>
+<script src="app.js"></script>
 </body>
 </html>
