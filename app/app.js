@@ -103,9 +103,14 @@ var NEWS_FIRST = ['bbc news', 'cnn international', 'al jazeera english', 'france
   'sky news', 'bloomberg', 'nhk world', 'abc news', 'cbs news', 'nbc news', 'trt world', 'cna', 'wion',
   'arirang', 'cgtn', 'africanews', 'i24news english', 'tvp world', 'nasa'];
 
+// Nigerian and pan-African channels whose streams answered from Italy (Nov 2026)
+var AFRICA = ['itage tv', 'afrolandtv', 'rave tv', 'bride tv', 'superscreen tv', 'wazobia max tv nigeria',
+  'afroculture tv', 'afrobeat tv entertainment', 'news central', 'africa 24 english'];
+
 var LIVE_ROWS = [
   { title: 'Italia', path: 'countries/it.m3u', first: IT_FIRST },
   { title: 'World News', path: 'categories/news.m3u', only: WORLD_NEWS },
+  { title: 'Nollywood & Africa', path: 'index.m3u', first: AFRICA, only: AFRICA },
   { title: 'United Kingdom', path: 'countries/uk.m3u' },
   { title: 'United States', path: 'countries/us.m3u' },
   { title: 'France', path: 'countries/fr.m3u' },
@@ -392,9 +397,11 @@ function rankedBy(list, score) {
 var liveCache = {};
 function loadLiveRow(row) {
   if (liveCache[row.path]) return liveCache[row.path];
-  liveCache[row.path] = getText(IPTV + row.path).then(function (text) {
-    var list = parseM3U(text);
-    if (row.only) list = list.filter(function (c) { return row.only.test(c.title); });
+  // index.m3u is shared with search, so it downloads once
+  liveCache[row.path] = (row.path === 'index.m3u' ? loadIndex() : getText(IPTV + row.path).then(parseM3U)).then(function (list) {
+    if (row.only) list = list.filter(row.only.test
+      ? function (c) { return row.only.test(c.title); }
+      : function (c) { return row.only.indexOf(c.title.toLowerCase()) > -1; });
     if (row.first) {
       list = rankedBy(list, function (c) {
         var i = row.first.indexOf(c.title.toLowerCase().replace(/\s+(hd|sd|fhd)$/, ''));
