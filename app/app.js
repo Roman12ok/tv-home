@@ -82,8 +82,8 @@ var APPS = [
     face: 'background:linear-gradient(135deg,#1c1c1e,#3a3a3c)', mark: '<span class="wordmark" style="font-size:1.75vw">Apple TV</span>' },
   { id: 'live', name: 'Live TV', sub: 'Free channels from Italy and around the world',
     face: 'background:linear-gradient(135deg,#ff2d55,#7a1fa2)', mark: '<span class="live-dot"></span><span class="wordmark" style="font-size:1.7vw">Live TV</span>' },
-  { id: 'world', name: 'World TV', sub: 'Thousands of free channels by category, from iptv-org',
-    face: 'background:linear-gradient(135deg,#0b4f6c,#12a39a)', mark: GLOBE + '<span class="wordmark" style="font-size:1.6vw">World TV</span>' },
+  { id: 'world', name: 'Entertainment', sub: 'Every free channel from iptv-org, by category, with search',
+    face: 'background:linear-gradient(135deg,#0b4f6c,#12a39a)', mark: GLOBE + '<span class="wordmark" style="font-size:1.3vw">Entertainment</span>' },
   { id: 'classics', name: 'Classics', sub: 'Public domain films from the Internet Archive',
     face: 'background:linear-gradient(135deg,#3b2a1a,#a07c4b)', mark: '<span style="font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:1.9vw">Classics</span>' },
   { id: '111477001006', name: 'RaiNews', sub: 'Live news',
@@ -122,6 +122,11 @@ var WORLD_ROWS = [['news', 'News'], ['sports', 'Sports'], ['movies', 'Movies'], 
   ['auto', 'Auto'], ['weather', 'Weather'], ['relax', 'Relax'], ['legislative', 'Politics'],
   ['religious', 'Religious'], ['general', 'General']
 ].map(function (c) { return { title: c[1], path: 'categories/' + c[0] + '.m3u', limit: 60, prefer: c[0] === 'news' ? NEWS_FIRST : null }; });
+
+// On-screen keyboard for searching the Entertainment section (TV remotes have no letters)
+var KEYS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').map(function (c) { return { kind: 'key', ch: c, label: c }; })
+  .concat([{ kind: 'key', ch: ' ', label: '␣' }, { kind: 'key', ch: 'del', label: '⌫' }]);
+var SEARCH_ROW = { title: 'Search', keys: true, step: 2.3, items: KEYS };
 
 var H264 = ' AND mediatype:movies AND format:"h.264"';
 var FILM_ROWS = [
@@ -370,6 +375,7 @@ function parseM3U(text) {
       image: smallLogo((lines[i].match(/tvg-logo="([^"]*)"/) || [])[1]),
       title: raw.replace(/\s*\[[^\]]*\]/g, '').replace(/\s*\(\d+p\)/g, '').trim(),
       res: +((raw.match(/\((\d+)p\)/) || [])[1] || 0),
+      group: ((lines[i].match(/group-title="([^";]*)/) || [])[1] || 'Other').replace('Undefined', 'Other'),
       flaky: /\[(not 24\/7|geo-blocked)\]/i.test(raw)
     });
   }
@@ -412,13 +418,55 @@ function loadLiveRow(row) {
         list = lead.concat(rest);
       }
     }
-    var names = {};
-    return list.filter(function (c) {
-      var key = c.title.toLowerCase().replace(/\s+(hd|sd|fhd)$/, '');
-      return !names[key] && (names[key] = 1);
-    }).slice(0, row.limit || 40).map(function (c) { c.sub = 'Live · ' + row.title; return c; });
+    return dedupe(list).slice(0, row.limit || 40).map(function (c) { c.sub = 'Live · ' + row.title; return c; });
   });
   return liveCache[row.path];
+}
+
+function dedupe(list) {
+  var names = {};
+  return list.filter(function (c) {
+    var key = c.title.toLowerCase().replace(/\s+(hd|sd|fhd)$/, '');
+    return !names[key] && (names[key] = 1);
+  });
+}
+
+// ---------- search: every iptv-org channel (index.m3u, ~2.6 MB, kept in memory only) ----------
+var search = { q: '', loading: null };
+
+function loadIndex() {
+  if (!search.loading) {
+    search.loading = getText(IPTV + 'index.m3u').then(function (text) {
+      return parseM3U(text).filter(function (c) { return c.group !== 'Shop'; }).map(function (c) {
+        // leading space + word-start matching: "rai" finds Rai 1, not Ukraine
+        c.key = ' ' + c.title.toLowerCase().replace(/[^a-z0-9À-ɏ]+/g, ' ').normalize('NFD').replace(/[̀-ͯ]/g, '');
+        return c;
+      });
+    });
+    search.loading.catch(function () { search.loading = null; });
+  }
+  return search.loading;
+}
+
+// Results as rows: best matches first, then one row per category.
+function searchRows(q, all) {
+  var words = q.toLowerCase().split(' ').filter(Boolean);
+  var hits = dedupe(rankedBy(all.filter(function (c) {
+    return words.every(function (w) { return c.key.indexOf(' ' + w) > -1; });
+  }), function (c) {
+    return (c.flaky ? 1e6 : 0) + (c.key.indexOf(' ' + words[0]) === 0 ? 0 : 1e5) + (c.image ? 0 : 5e3) - c.res;
+  }));
+  if (!hits.length) return [{ title: 'No channels found for “' + q + '”', items: [] }];
+  var groups = {}, order = [];
+  hits.forEach(function (c) {
+    c.sub = 'Live · ' + c.group;
+    if (!groups[c.group]) { groups[c.group] = []; order.push(c.group); }
+    groups[c.group].push(c);
+  });
+  order.sort(function (a, b) { return groups[b].length - groups[a].length || (a < b ? -1 : 1); });
+  return [{ title: 'Top results · ' + hits.length + (hits.length > 1 ? ' channels' : ' channel'), items: hits.slice(0, 40) }].concat(order.slice(0, 14).map(function (g) {
+    return { title: g + ' · ' + groups[g].length, items: groups[g].slice(0, 40) };
+  }));
 }
 
 // ---------- data: public domain films (Internet Archive) ----------
@@ -521,6 +569,7 @@ function renderDock() {
 // Only the first few cards get their image straight away; hydrate() fills in the rest
 // as focus nears them, so a 60-channel row doesn't decode 60 logos at once.
 function cardHtml(it, i) {
+  if (it.kind === 'key') return '<div class="key">' + esc(it.label) + '</div>';
   var src = (i < 12 ? 'src="' : 'data-src="') + esc(it.image) + '"';
   if (it.kind === 'show') {
     return '<div class="poster shine"><img ' + src + ' alt=""></div>';
@@ -650,7 +699,7 @@ function homeKey(k) {
   } else if (k === K.OK) {
     if (zone === 'row') activate(rowItems[itemIndex], rowItems, itemIndex);
     else if (app.id === 'live') openBrowse('Live TV', 'Free channels from Italy and around the world · iptv-org', LIVE_ROWS, loadLiveRow);
-    else if (app.id === 'world') openBrowse('World TV', 'Free public channels by category · iptv-org', WORLD_ROWS, loadLiveRow);
+    else if (app.id === 'world') openWorld();
     else if (app.id === 'classics') openBrowse('Classics', 'Public domain films from the Internet Archive', FILM_ROWS, loadFilmRow);
     else openApp(app);
   } else return false;
@@ -668,7 +717,8 @@ function openBrowse(title, sub, rows, loader) {
   $('browseTitle').textContent = title;
   $('browseSub').textContent = sub;
   $('browseRows').innerHTML = rows.map(function (r, i) {
-    return '<div class="brow"><div class="brow-label">' + esc(r.title) + '</div><div class="strip" id="brow' + i + '"><div class="row-empty">Loading…</div></div></div>';
+    return '<div class="brow' + (r.keys ? ' keys' : '') + '"><div class="brow-label" id="browl' + i + '">' + esc(r.title) +
+      '</div><div class="strip" id="brow' + i + '"><div class="row-empty">Loading…</div></div></div>';
   }).join('');
   $('browse').className = 'screen on';
   paintBrowse();
@@ -676,11 +726,11 @@ function openBrowse(title, sub, rows, loader) {
 
 // Only fetch the rows on screen and just below, so 26 categories don't all download at once.
 function loadNearbyRows() {
-  for (var i = Math.max(0, browse.row - 1); i <= Math.min(browse.rows.length - 1, browse.row + 2); i++) {
+  for (var i = Math.max(0, browse.row - 1); i <= Math.min(browse.rows.length - 1, browse.row + 3); i++) {
     if (browse.asked[i]) continue;
     browse.asked[i] = true;
     (function (i, rows) {
-      browse.loader(rows[i]).then(function (items) {
+      (rows[i].items ? Promise.resolve(rows[i].items) : browse.loader(rows[i])).then(function (items) {
         if (browse.rows !== rows) return;
         browse.items[i] = items;
         $('brow' + i).innerHTML = items.length ? items.map(cardHtml).join('') : '<div class="row-empty">Nothing available right now</div>';
@@ -694,17 +744,60 @@ function loadNearbyRows() {
 
 function paintBrowse() {
   loadNearbyRows();
-  for (var r = Math.max(0, browse.row - 2); r <= Math.min(browse.rows.length - 1, browse.row + 2); r++) {
+  for (var r = Math.max(0, browse.row - 2); r <= Math.min(browse.rows.length - 1, browse.row + 3); r++) {
     var strip = $('brow' + r), kids = strip.children;
     hydrate(strip, browse.col[r]);
     for (var c = 0; c < kids.length; c++) kids[c].classList.toggle('focused', r === browse.row && c === browse.col[r]);
-    scrollStrip(strip, browse.col[r], 16.5, 90.6);
+    scrollStrip(strip, browse.col[r], browse.rows[r].step || 16.5, 90.6);
   }
-  $('browseRows').style.transform = 'translateY(' + -Math.max(0, browse.row - 1) * 14.2 + 'vw)';
+  // keep the row above in view; the keyboard row is shorter than the others
+  for (var y = 0, i = 0; i < browse.row - 1; i++) y += browse.rows[i].keys ? 7 : 14.2;
+  $('browseRows').style.transform = 'translateY(' + -y + 'vw)';
+}
+
+// ---------- Entertainment: categories, or search results under the keyboard ----------
+var WORLD_SUB = 'Every free channel from iptv-org · ▲ to search · number keys type digits';
+
+function openWorld() {
+  search.q = '';
+  openBrowse('Entertainment', WORLD_SUB, [SEARCH_ROW].concat(WORLD_ROWS), loadLiveRow);
+  browse.row = 1;
+  paintBrowse();
+  searchLabel();
+  loadIndex().catch(function () {}); // fetch the full list early so the first search is instant
+}
+
+function searchLabel(status) {
+  $('browl0').innerHTML = '<span class="search-box">' + (search.q
+    ? esc(search.q) + '<span class="caret"></span>'
+    : '<span class="search-ph">Search all channels</span>') + '</span>' + (status ? '<span class="search-status">' + esc(status) + '</span>' : '');
+}
+
+function showRows(rest) {
+  var col = browse.col[0];
+  openBrowse('Entertainment', WORLD_SUB, [SEARCH_ROW].concat(rest), loadLiveRow);
+  browse.col[0] = col;
+  paintBrowse();
+}
+
+function typeKey(ch) {
+  var q = ch === 'del' ? search.q.slice(0, -1) : (search.q + ch).replace(/^ +/, '').replace(/  +/g, ' ');
+  if (q === search.q) return;
+  search.q = q;
+  if (!q.trim()) { showRows(WORLD_ROWS); searchLabel(); return; }
+  searchLabel('Searching…');
+  loadIndex().then(function (all) {
+    if (search.q !== q || screen !== 'browse') return;
+    showRows(searchRows(q.trim(), all));
+    searchLabel();
+  }).catch(function () { if (search.q === q) searchLabel('Could not load the channel list'); });
 }
 
 function browseKey(k) {
-  var r = browse.row, n = browse.items[r].length;
+  var r = browse.row, n = browse.items[r].length, searching = browse.rows[0] === SEARCH_ROW;
+  if (searching && ((k >= 48 && k <= 57) || (k >= 65 && k <= 90))) { typeKey(String.fromCharCode(k)); return true; }
+  if (searching && isBack(k) && search.q) { search.q = ''; showRows(WORLD_ROWS); searchLabel(); return true; }
+  if (k === K.OK && browse.rows[r].keys) { typeKey(browse.items[r][browse.col[r]].ch); return true; }
   if (k === K.LEFT) browse.col[r] = Math.max(0, browse.col[r] - 1);
   else if (k === K.RIGHT) browse.col[r] = Math.min(Math.max(0, n - 1), browse.col[r] + 1);
   else if (k === K.UP) browse.row = Math.max(0, r - 1);

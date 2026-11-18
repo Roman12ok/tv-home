@@ -195,6 +195,20 @@ img { display: block; }
 .brow-label { font-size: 1.2vw; font-weight: 600; opacity: .85; margin-bottom: 1vw; }
 .browse-hint { position: absolute; right: 4.7vw; top: 3.6vw; font-size: .9vw; opacity: .55; }
 
+/* search: a box above a one-line on-screen keyboard */
+.brow.keys { height: 7vw; }
+.brow.keys .brow-label { opacity: 1; margin-bottom: .7vw; }
+.search-box { display: inline-block; min-width: 28vw; padding: .45vw 1vw; border-radius: 2vw; font-size: 1.15vw;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); }
+.search-ph { opacity: .5; font-weight: 500; }
+.caret { display: inline-block; width: .12vw; height: 1.2vw; margin-left: .15vw; vertical-align: -.15vw; background: #fff;
+  animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.search-status { margin-left: 1vw; font-size: .95vw; font-weight: 500; opacity: .6; }
+.key { flex: none; width: 2vw; height: 2.6vw; margin-right: .3vw; border-radius: .4vw; background: rgba(255,255,255,.1);
+  font-size: 1.05vw; font-weight: 600; line-height: 2.6vw; text-align: center; transition: transform .15s ease; }
+.key.focused { background: #fff; color: #000; transform: scale(1.18); }
+
 /* ---------- player ---------- */
 /* Samsung TVs draw video on a hardware plane behind the page and show it through a
    transparent hole, so while playing nothing else may be drawn under or over the video:
